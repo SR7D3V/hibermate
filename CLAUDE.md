@@ -44,6 +44,8 @@ The full spec, kept verbatim, is in [docs/SPEC.md](docs/SPEC.md). Its Appendix A
 - The helper is registered only when the app runs from `/Applications`, never when translocated. It never holds before the user approves it in Login Items.
 
 ## Building and testing
+- In this zsh, a bare `log` is a shell builtin. Always use `/usr/bin/log show …` to read Hibermate's os_log.
+- The app opts out of App Nap for its whole lifetime. Otherwise, with the lid closed, its heartbeat timer gets throttled and the helper's dead-man switch ends holds early (found on real hardware).
 - `scripts/test.sh` runs the HibermateCore tests (Swift Testing). **Always build outside the repo.** The repo is in iCloud-synced `~/Documents`, so build output gets file-provider xattrs, `codesign` fails, and iCloud uploads the artifacts. Scripts use `~/Library/Caches/hibermate-build`. Xcode's DerivedData already lives in `~/Library`.
 - All logic lives in `Packages/HibermateCore` (pure, with fakes). Real IOKit, ServiceManagement, and XPC code goes in the app and helper targets.
 

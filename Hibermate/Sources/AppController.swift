@@ -55,6 +55,7 @@ final class AppController: ObservableObject {
     private var helperReachable = false
     private var lastHeartbeat: TimeInterval = -.infinity
     private var timer: Timer?
+    private var appNapOptOut: NSObjectProtocol?
     private var lastConditions = Conditions()
     private var activity = ActivityTracker()
     private let sampler = DarwinProcessSampler()
@@ -104,9 +105,17 @@ final class AppController: ObservableObject {
                                                queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
+        // Opt out of App Nap. With the lid closed and the display off, macOS
+        // throttled this menu bar app's timers, the 30 s heartbeat stopped, and
+        // the helper's dead-man switch ended the hold after 2 min (seen on real
+        // hardware, 2026-10-17). This doesn't prevent sleep; the hold itself does.
+        appNapOptOut = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiatedAllowingIdleSystemSleep, .latencyCritical],
+            reason: "Hibermate monitors AI sessions and hardware safety")
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
+        timer?.tolerance = 0.5
         tick()
     }
 
