@@ -83,6 +83,7 @@ No output, or `SleepDisabled 0`, means normal sleep. When no agent is working, t
 ## Known limitations
 
 - **Unsigned builds:** macOS asks you to approve the first launch (see Install). The helper accepts calls only from `/Applications/Hibermate.app`, but without an Apple Developer ID it can't cryptographically pin the caller's developer identity.
+- **Updating unsigned builds:** macOS pins an unsigned helper to its exact build. After an update that changes the helper, Hibermate re-registers it automatically, and you may need to approve it in Login Items again. A Developer ID–signed release would remove this step.
 - **Cloud agents without hooks** (waiting on a remote model) use almost no CPU, so activity watching may miss them. Use a hook integration or the generic command instead.
 - Some tool details (payload fields, LM Studio's process names, Gemini CLI vs. Antigravity CLI) are still being verified; see [docs/AGENTS.md](docs/AGENTS.md).
 - Codex asks you to trust new hooks in its `/hooks` menu before they run.
