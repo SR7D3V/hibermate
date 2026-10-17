@@ -94,6 +94,12 @@ struct LiveSensors: SystemSensing {
         for (pid, assertions) in dict where !pids.contains(pid.int32Value) {
             for a in assertions {
                 guard let type = a[kIOPMAssertionTypeKey] as? String, preventing.contains(type) else { continue }
+                // macOS's power manager holds this whenever the display is on, and
+                // drops it when the lid closes. It isn't another app keeping the Mac
+                // awake (seen on real hardware, 2026-10-17).
+                if let name = a[kIOPMAssertionNameKey] as? String, name.hasPrefix("Powerd - Prevent sleep while display is on") {
+                    continue
+                }
                 // Level 255 (kIOPMAssertionLevelOn) means the assertion is active.
                 if (a[kIOPMAssertionLevelKey] as? Int ?? 255) == Int(kIOPMAssertionLevelOn) { return true }
             }
