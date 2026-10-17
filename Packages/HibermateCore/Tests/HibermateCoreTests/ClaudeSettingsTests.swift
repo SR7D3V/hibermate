@@ -225,3 +225,12 @@ struct ClaudeSettingsFileTests {
         #expect(try ClaudeSettingsFile(url: real).isInstalled())
     }
 }
+
+@Suite("Compact JSON style")
+struct CompactJSONTests {
+    @Test(arguments: [#"{"a":1,"b":[1,{"c":"d"}],"e":{}}"#, #"{"a":[]}"# + "\n", "{}"])
+    func compactFilesRoundTrip(text: String) throws {
+        let data = Data(text.utf8)
+        #expect(OrderedJSONWriter.matchingStyle(of: data).serialize(try OrderedJSONParser.parse(data)) == data)
+    }
+}

@@ -93,7 +93,7 @@ struct MenuContent: View {
         Divider()
         Button("Settings…") { show("settings") }
             .keyboardShortcut(",")
-        Button("Uninstall Hibermate…") { show("settings") }
+        Button("Uninstall Hibermate…") { Uninstaller.confirmAndRun(controller) }
         Button("Quit Hibermate") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
@@ -101,5 +101,40 @@ struct MenuContent: View {
     private func show(_ id: String) {
         openWindow(id: id)
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+@MainActor
+enum Uninstaller {
+    static func confirmAndRun(_ controller: AppController) {
+        NSApp.activate(ignoringOtherApps: true)
+        let confirm = NSAlert()
+        confirm.messageText = "Uninstall Hibermate?"
+        confirm.informativeText = """
+            This restores your original sleep setting, removes Hibermate's hooks from every AI tool \
+            (each settings file is backed up first), removes the helper, and deletes Hibermate's data.
+            """
+        confirm.addButton(withTitle: "Uninstall")
+        confirm.addButton(withTitle: "Cancel")
+        guard confirm.runModal() == .alertFirstButtonReturn else { return }
+
+        controller.uninstall { result in
+            let done = NSAlert()
+            done.messageText = result.failures.isEmpty ? "Hibermate has been removed" : "Hibermate was mostly removed"
+            var text = result.removedIntegrations.isEmpty ? "" :
+                "Removed hooks from: \(result.removedIntegrations.joined(separator: ", ")).\n\n"
+            if !result.failures.isEmpty { text += "Some steps need attention:\n" + result.failures.joined(separator: "\n") + "\n\n" }
+            text += "Move Hibermate.app to the Trash to finish."
+            done.informativeText = text
+            done.addButton(withTitle: "Move to Trash and Quit")
+            done.addButton(withTitle: "Quit")
+            if done.runModal() == .alertFirstButtonReturn, !controller.dryRun {
+                NSWorkspace.shared.recycle([Bundle.main.bundleURL]) { _, _ in
+                    DispatchQueue.main.async { exit(0) }
+                }
+            } else {
+                exit(0)
+            }
+        }
     }
 }

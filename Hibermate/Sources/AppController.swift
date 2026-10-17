@@ -205,6 +205,49 @@ final class AppController: ObservableObject {
         }
     }
 
+    // MARK: - Uninstall
+
+    struct UninstallResult {
+        var removedIntegrations: [String]
+        var failures: [String]
+    }
+
+    /// Restores everything Hibermate changed:
+    /// 1. Release any hold, so the helper restores the original SleepDisabled.
+    /// 2. Remove Hibermate's entries from every tool (each file is backed up first).
+    /// 3. Unregister the helper; on SIGTERM it restores again and removes its state.
+    /// 4. Delete ~/Library/Application Support/Hibermate.
+    /// The caller then offers to move the app to the Trash and quits.
+    func uninstall(completion: @escaping (UninstallResult) -> Void) {
+        timer?.invalidate()
+        let release = engine.handle(.quit, now: ProcessInfo.processInfo.systemUptime, conditions: lastConditions)
+        run(release + [.endHold(.quitting)]) { [weak self] in
+            guard let self else { return }
+            var failures: [String] = []
+            var removed: [String] = []
+            if self.dryRun {
+                appLog.notice("[dry-run] would remove all integrations, unregister the helper, and delete \(self.paths.supportDirectory.path, privacy: .public)")
+                completion(UninstallResult(removedIntegrations: [], failures: []))
+                return
+            }
+            let report = IntegrationLocations.removeAll()
+            removed = report.removed
+            failures += report.failed.map { "\($0.name): \($0.reason)" }
+            Task { @MainActor in
+                if HelperRegistration.status != .notRegistered {
+                    do { try await HelperRegistration.unregister() } catch {
+                        failures.append("Helper: \(error.localizedDescription)")
+                    }
+                }
+                do { try FileManager.default.removeItem(at: self.paths.supportDirectory) } catch CocoaError.fileNoSuchFile {
+                } catch {
+                    failures.append("Could not delete \(self.paths.supportDirectory.path): \(error.localizedDescription)")
+                }
+                completion(UninstallResult(removedIntegrations: removed, failures: failures))
+            }
+        }
+    }
+
     // MARK: - Effects
 
     /// Runs effects strictly in order. `sleepNow` waits until the restore has

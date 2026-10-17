@@ -236,3 +236,59 @@ struct ActivityTrackerTests {
         #expect((mine?.cpuTimeNs ?? 0) > 0)
     }
 }
+
+@Suite("Uninstall removes every integration")
+struct IntegrationLocationsTests {
+    @Test func installAllThenRemoveAllRestoresEveryFile() throws {
+        let home = makeTempDir()
+        let fm = FileManager.default
+        // Pre-existing user configs for some tools; others don't exist yet.
+        let originals: [String: String] = [
+            ".claude/settings.json": #"{"model":"opus","hooks":{"Stop":[{"hooks":[{"type":"command","command":"mine.sh"}]}]}}"# + "\n",
+            ".cursor/hooks.json": #"{"version":1,"hooks":{"stop":[{"command":"./theirs.sh"}]}}"# + "\n",
+            ".gemini/settings.json": #"{"theme":"dark"}"# + "\n",
+        ]
+        for (path, text) in originals {
+            let url = home.appendingPathComponent(path)
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(text.utf8).write(to: url)
+        }
+        for d in [".codex", ".qwen", ".copilot"] {
+            try fm.createDirectory(at: home.appendingPathComponent(d), withIntermediateDirectories: true)
+        }
+
+        let locations = IntegrationLocations.hookFiles(home: home)
+        for l in locations { try l.file.install() }
+        for l in locations { #expect(try l.file.isInstalled(), "\(l.displayName) installed") }
+
+        let report = IntegrationLocations.removeAll(home: home)
+        #expect(report.failed.isEmpty)
+        #expect(report.removed.count == locations.count)
+        for (path, text) in originals {
+            #expect(try String(contentsOf: home.appendingPathComponent(path), encoding: .utf8) == text, "\(path) restored")
+        }
+        #expect(!fm.fileExists(atPath: home.appendingPathComponent(".copilot/hooks/hibermate.json").path))
+        #expect(IntegrationLocations.removeAll(home: home).removed.isEmpty, "second run is a no-op")
+    }
+
+    @Test func openCodePluginRemovedOnlyIfOurs() throws {
+        let home = makeTempDir()
+        let plugin = IntegrationLocations.openCodePlugin(home: home)
+        try FileManager.default.createDirectory(at: plugin.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("// someone else's plugin\n".utf8).write(to: plugin)
+        #expect(IntegrationLocations.removeAll(home: home).removed.isEmpty)
+        #expect(FileManager.default.fileExists(atPath: plugin.path))
+        try Data((IntegrationLocations.openCodePluginHeader + " …\n").utf8).write(to: plugin)
+        #expect(IntegrationLocations.removeAll(home: home).removed == ["OpenCode"])
+    }
+
+    @Test func corruptFileIsReportedNotTouched() throws {
+        let home = makeTempDir()
+        let url = home.appendingPathComponent(".claude/settings.json")
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("{broken".utf8).write(to: url)
+        let report = IntegrationLocations.removeAll(home: home)
+        #expect(report.failed.map(\.name) == ["Claude Code"])
+        #expect(try String(contentsOf: url, encoding: .utf8) == "{broken")
+    }
+}

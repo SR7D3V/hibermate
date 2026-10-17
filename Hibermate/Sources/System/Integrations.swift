@@ -96,7 +96,7 @@ final class OpenCodeIntegration: AgentIntegration {
         Adds a small plugin at ~/.config/opencode/plugins/hibermate.js that tells Hibermate when an OpenCode \
         session is busy or idle. It sends only the session ID and status, never prompts or code.
         """
-    static let header = "// Hibermate plugin for OpenCode"
+    static let header = IntegrationLocations.openCodePluginHeader
 
     private let home: URL
     private let paths: HibermatePaths
@@ -109,7 +109,7 @@ final class OpenCodeIntegration: AgentIntegration {
     }
 
     private var configDir: URL { home.appendingPathComponent(".config/opencode", isDirectory: true) }
-    private var pluginFile: URL { configDir.appendingPathComponent("plugins/hibermate.js") }
+    private var pluginFile: URL { IntegrationLocations.openCodePlugin(home: home) }
 
     var isToolPresent: Bool { FileManager.default.fileExists(atPath: configDir.path) }
 
@@ -182,31 +182,13 @@ final class OpenCodeIntegration: AgentIntegration {
 }
 
 enum IntegrationCatalog {
+    /// Built from `IntegrationLocations`, the same list the uninstaller uses.
     static func all(paths: HibermatePaths, dryRun: Bool) -> [AgentIntegration] {
         let home = HibermatePaths.currentHome()
-        func dir(_ path: String) -> URL { home.appendingPathComponent(path, isDirectory: true) }
-        return [
-            HookFileIntegration(displayName: "Claude Code", file: .userSettings(home: home), toolDirectory: dir(".claude"),
-                                paths: paths, dryRun: dryRun),
-            HookFileIntegration(displayName: "OpenAI Codex CLI",
-                                file: HookConfigFile(url: dir(".codex").appendingPathComponent("hooks.json"), schema: .codex),
-                                toolDirectory: dir(".codex"),
-                                extraNote: "Codex asks you to review and trust new hooks in its /hooks menu before they run.",
-                                paths: paths, dryRun: dryRun),
-            HookFileIntegration(displayName: "Gemini CLI",
-                                file: HookConfigFile(url: dir(".gemini").appendingPathComponent("settings.json"), schema: .gemini),
-                                toolDirectory: dir(".gemini"), paths: paths, dryRun: dryRun),
-            HookFileIntegration(displayName: "Qwen Code",
-                                file: HookConfigFile(url: dir(".qwen").appendingPathComponent("settings.json"), schema: .qwen),
-                                toolDirectory: dir(".qwen"), paths: paths, dryRun: dryRun),
-            HookFileIntegration(displayName: "GitHub Copilot CLI",
-                                file: HookConfigFile(url: dir(".copilot/hooks").appendingPathComponent("hibermate.json"),
-                                                     schema: .copilot, ownedFile: true, createsParentDirectory: true),
-                                toolDirectory: dir(".copilot"), paths: paths, dryRun: dryRun),
-            HookFileIntegration(displayName: "Cursor (editor agent and CLI)",
-                                file: HookConfigFile(url: dir(".cursor").appendingPathComponent("hooks.json"), schema: .cursor),
-                                toolDirectory: dir(".cursor"), paths: paths, dryRun: dryRun),
-            OpenCodeIntegration(home: home, paths: paths, dryRun: dryRun),
-        ]
+        let hookFiles: [AgentIntegration] = IntegrationLocations.hookFiles(home: home).map {
+            HookFileIntegration(displayName: $0.displayName, file: $0.file, toolDirectory: $0.toolDirectory,
+                                extraNote: $0.note, paths: paths, dryRun: dryRun)
+        }
+        return hookFiles + [OpenCodeIntegration(home: home, paths: paths, dryRun: dryRun)]
     }
 }

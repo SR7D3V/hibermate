@@ -228,10 +228,13 @@ public struct OrderedJSONParser {
 public struct OrderedJSONWriter {
     public var indent: String = "  "
     public var trailingNewline = true
+    /// `JSON.stringify(value)` style: no whitespace at all.
+    public var compact = false
 
-    public init(indent: String = "  ", trailingNewline: Bool = true) {
+    public init(indent: String = "  ", trailingNewline: Bool = true, compact: Bool = false) {
         self.indent = indent
         self.trailingNewline = trailingNewline
+        self.compact = compact
     }
 
     /// Picks the indent and trailing-newline style of an existing file.
@@ -239,6 +242,12 @@ public struct OrderedJSONWriter {
         let text = String(decoding: data, as: UTF8.self)
         var writer = OrderedJSONWriter()
         writer.trailingNewline = text.hasSuffix("\n") || data.isEmpty
+        // A file written on one line (no newline before the end) stays compact.
+        let body = text.hasSuffix("\n") ? String(text.dropLast()) : text
+        if !body.isEmpty, !body.contains("\n") {
+            writer.compact = true
+            return writer
+        }
         for line in text.split(separator: "\n", omittingEmptySubsequences: true).dropFirst() {
             let lead = line.prefix { $0 == " " || $0 == "\t" }
             if !lead.isEmpty {
@@ -262,6 +271,22 @@ public struct OrderedJSONWriter {
         case .bool(let b): out += b ? "true" : "false"
         case .number(let n): out += n
         case .string(let s): Self.writeString(s, into: &out)
+        case .array(let items) where compact:
+            out += "["
+            for (idx, item) in items.enumerated() {
+                if idx > 0 { out += "," }
+                write(item, level: level, into: &out)
+            }
+            out += "]"
+        case .object(let members) where compact:
+            out += "{"
+            for (idx, m) in members.enumerated() {
+                if idx > 0 { out += "," }
+                Self.writeString(m.key, into: &out)
+                out += ":"
+                write(m.value, level: level, into: &out)
+            }
+            out += "}"
         case .array(let items):
             if items.isEmpty { out += "[]"; return }
             out += "[\n"
