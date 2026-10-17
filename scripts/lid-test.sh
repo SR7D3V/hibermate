@@ -53,6 +53,9 @@ run() {
         fi
         sleep 5
     done
+    # One last timestamp: if the Mac slept through the planned end, the gap
+    # between the last sample and now shows it.
+    date +%s >> "$LOG"
     echo "# finished=$(date +%s)" >> "$LOG"
     if [ "$MODE" = "--hold" ]; then
         # Work done: Hibermate starts its grace period, then lets the Mac sleep.
@@ -71,11 +74,22 @@ report() {
     fmt() { date -r "$1" +%T; }
 
     echo "== Run: $MODE, planned $(fmt "$START") → $(fmt "$END")"
-    [ -n "$FINISHED" ] && echo "   finished at $(fmt "$FINISHED")" || echo "   (not finished; still running or interrupted)"
+    if [ -n "$FINISHED" ]; then
+        LATE=$((FINISHED - END))
+        if [ "$LATE" -gt 15 ]; then
+            echo "   finished at $(fmt "$FINISHED"), $((LATE / 60)) min $((LATE % 60)) s late (the Mac was frozen while asleep)"
+        else
+            echo "   finished at $(fmt "$FINISHED"), on time"
+        fi
+    else
+        echo "   (not finished; still running or interrupted)"
+    fi
 
     echo
     echo "== Gaps in the Mac's own timestamps (over 15 s = the Mac was asleep)"
-    GAPS=$(grep -v '^#' "$LOG" | awk 'NR > 1 && $1 - prev > 15 { printf "%s %s %d\n", prev, $1, $1 - prev } { prev = $1 }')
+    # The finish time counts as a sample too (older logs lack the final timestamp).
+    GAPS=$( { grep -v '^#' "$LOG"; [ -n "$FINISHED" ] && echo "$FINISHED"; } \
+        | awk 'NR > 1 && $1 - prev > 15 { printf "%s %s %d\n", prev, $1, $1 - prev } { prev = $1 }')
     if [ -z "$GAPS" ]; then
         echo "   none: the Mac stayed awake for the whole run"
     else
