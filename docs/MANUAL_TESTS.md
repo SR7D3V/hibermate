@@ -46,7 +46,8 @@ Fastest visible check, with no tool settings changed: `scripts/lid-test.sh run -
 - [ ] With an **external display** (clamshell): the Mac stays awake as a desktop; Hibermate never forces sleep.
 - [ ] **Queued prompts**: queue 3 prompts, close the lid, and confirm all 3 complete before sleep. Measure the Stop → next UserPromptSubmit gap in the session file timestamps; it must stay under the 30 s grace floor.
 - [ ] **Permission prompt** with the lid closed: released after the permission-wait timeout.
-- [ ] Another app holding a sleep assertion (`caffeinate -i` in a terminal): no forced sleep at release.
+- [ ] `caffeinate -i` running (idle-sleep assertion): the Mac **still sleeps** at release, as macOS would on lid close.
+- [ ] On AC with `caffeinate -s` running: **no** forced sleep at release, and the log line "Not sleeping the Mac (…)" names caffeinate.
 - [ ] Note any system daemon holding a long-lived idle-sleep assertion that blocks Hibermate's sleep call.
 
 ## 4. Failure and recovery

@@ -13,7 +13,7 @@ protocol SystemSensing {
     func lowPowerMode() -> Bool
     func lidClosed() -> Bool?
     func externalDisplayConnected() -> Bool?
-    func otherSleepAssertions(excluding pids: Set<pid_t>) -> Bool?
+    func otherSleepAssertions(excluding pids: Set<pid_t>, onAC: Bool) -> Bool?
     /// "process: type "name"" for each blocking assertion, for logs.
     func describeOtherSleepAssertions(excluding pids: Set<pid_t>) -> [String]
     func batteryNeedsService() -> Bool
@@ -85,10 +85,16 @@ struct LiveSensors: SystemSensing {
         return ids.prefix(Int(count)).contains { CGDisplayIsBuiltin($0) == 0 }
     }
 
-    /// Any other process holding an assertion that prevents system sleep. Examples:
-    /// a download, a Time Machine backup, or the user's own `caffeinate`.
-    func otherSleepAssertions(excluding pids: Set<pid_t>) -> Bool? {
-        blockingAssertions(excluding: pids).map { !$0.isEmpty }
+    /// Whether another process holds an assertion that macOS itself honors
+    /// when the lid closes (user decision, 2026-10-17: "match macOS"). That
+    /// means only PreventSystemSleep (e.g. `caffeinate -s`), and only on AC
+    /// power. Idle-sleep assertions (music players, video calls, editors,
+    /// plain `caffeinate`) don't stop macOS's lid-close sleep, so they don't
+    /// stop Hibermate's either. Otherwise a Mac in a bag could stay awake after
+    /// the work ends, because macOS doesn't re-check lid sleep by itself.
+    func otherSleepAssertions(excluding pids: Set<pid_t>, onAC: Bool) -> Bool? {
+        guard onAC else { return false }
+        return blockingAssertions(excluding: pids).map { !$0.isEmpty }
     }
 
     func describeOtherSleepAssertions(excluding pids: Set<pid_t>) -> [String] {
@@ -100,17 +106,9 @@ struct LiveSensors: SystemSensing {
         guard IOPMCopyAssertionsByProcess(&byProcess) == kIOReturnSuccess,
               let dict = byProcess?.takeRetainedValue() as? [NSNumber: [[String: Any]]] else { return nil }
         var found: [String] = []
-        let preventing: Set<String> = [kIOPMAssertionTypePreventSystemSleep, kIOPMAssertionTypePreventUserIdleSystemSleep,
-                                       kIOPMAssertionTypeNoIdleSleep]
         for (pid, assertions) in dict where !pids.contains(pid.int32Value) {
             for a in assertions {
-                guard let type = a[kIOPMAssertionTypeKey] as? String, preventing.contains(type) else { continue }
-                // macOS's power manager holds this whenever the display is on, and
-                // drops it when the lid closes. It isn't another app keeping the Mac
-                // awake (seen on real hardware, 2026-10-17).
-                if let name = a[kIOPMAssertionNameKey] as? String, name.hasPrefix("Powerd - Prevent sleep while display is on") {
-                    continue
-                }
+                guard let type = a[kIOPMAssertionTypeKey] as? String, type == kIOPMAssertionTypePreventSystemSleep else { continue }
                 // Level 255 (kIOPMAssertionLevelOn) means the assertion is active.
                 if (a[kIOPMAssertionLevelKey] as? Int ?? 255) == Int(kIOPMAssertionLevelOn) {
                     let owner = DarwinProcessTable().entry(for: pid.int32Value)?.name ?? "pid \(pid)"

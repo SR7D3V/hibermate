@@ -27,7 +27,7 @@ The full spec, kept verbatim, is in [docs/SPEC.md](docs/SPEC.md). Its Appendix A
 ## Safety invariants (each one has a test)
 1. Sleep prevention never gets stuck on. Recovery takes ≤ 2 min after a crash, force-quit, uninstall, missed hook, or `kill -9`. The helper's dead-man switch enforces this.
 2. Never clobber user power settings. Save the original `SleepDisabled`. If it was already 1, never set it to 0. Restore it on uninstall.
-3. Never sleep a Mac someone is using. Sleep only if the lid is closed (`AppleClamshellState` via IOKit), no external display is connected, no other process holds a system-sleep assertion (`IOPMCopyAssertionsByProcess`, excluding our own), and the grace period has passed. The `.critical` rule is the only exception.
+3. Never sleep a Mac someone is using. Sleep only if the lid is closed (`AppleClamshellState` via IOKit), no external display is connected, no other process holds an assertion macOS itself honors on lid close (only `PreventSystemSleep`, and only on AC: SPEC A.6), and the grace period has passed. The `.critical` rule is the only exception. macOS does **not** sleep by itself when SleepDisabled is restored with the lid already closed, so Hibermate's `sleepNow` is what returns the Mac to sleep.
 4. Hooks never interfere with Claude Code. They always exit 0, finish in under 100 ms, print nothing to stdout or stderr, never read prompts or transcripts, and work silently when Hibermate is absent.
 5. No network access and no telemetry. Log locally with `os_log` only. Store only session IDs, PIDs, timestamps, event names, and the project folder name (`basename(cwd)`, never the full path).
 6. Fail safe. When anything is uncertain, there is no hold and macOS sleeps normally.

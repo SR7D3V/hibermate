@@ -266,3 +266,13 @@ This supersedes the spec's "Claude Code (primary), other agents via process watc
 - **A generic `hibermate-hook generic …` interface** for anything else.
 
 Each integration is opt-in, with separate consent. Process watching stays off by default. The hardware-safety rules apply identically to every source. Details and research sources are in [AGENTS.md](AGENTS.md).
+
+## A.6 Invariant 3 amended: match macOS's own lid-close behavior (user, 2026-10-17)
+
+Real-hardware testing showed two things:
+1. **macOS doesn't sleep by itself** when `SleepDisabled` is restored while the lid is already closed.
+2. **Idle-sleep assertions are everywhere.** Music players, video calls, editors, and macOS's own `powerd` "Prevent sleep while display is on" all hold them, and macOS ignores them when the lid closes.
+
+Under the original rule (any assertion blocks sleep), a Mac in a bag could stay awake after the work ended. That's worse than having no Hibermate, and a heat risk.
+
+**Decision (option A):** other processes block Hibermate's sleep only with assertions macOS itself honors on lid close. That is `PreventSystemSleep` (e.g. `caffeinate -s`), and only on AC power. `PreventUserIdleSystemSleep` (e.g. plain `caffeinate`, Spotify, Zoom) no longer blocks it. The lid-open and external-display rules are unchanged, and `.critical` thermal still overrides everything.

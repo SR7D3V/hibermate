@@ -186,6 +186,7 @@ final class AppController: ObservableObject {
         // Heartbeat: every 30 s while a hold is active, every 60 s otherwise.
         if now - lastHeartbeat >= (engine.isActive ? 30 : 60) { pingHelper() }
 
+        let power = sensors.power()
         let c = Conditions(
             holdWanted: SessionAggregator.holdWanted(live),
             helperReady: setup == .ready && helperReachable,
@@ -193,8 +194,8 @@ final class AppController: ObservableObject {
             thermal: sensors.thermal(),
             lidClosed: sensors.lidClosed(),
             externalDisplayConnected: sensors.externalDisplayConnected(),
-            otherSleepAssertions: sensors.otherSleepAssertions(excluding: [getpid()]),
-            power: sensors.power(),
+            otherSleepAssertions: sensors.otherSleepAssertions(excluding: [getpid()], onAC: power == .ac),
+            power: power,
             lowPowerMode: sensors.lowPowerMode()
         )
         lastConditions = c
@@ -364,8 +365,8 @@ final class AppController: ObservableObject {
         case nil: "External display: unknown"
         }
         s.otherApps = switch c.otherSleepAssertions {
-        case true?: "Other apps are preventing sleep (Hibermate won't force sleep)"
-        case false?: "No other apps are preventing sleep"
+        case true?: "Another app is blocking lid-close sleep on power (Hibermate won't force sleep)"
+        case false?: "Nothing is blocking lid-close sleep"
         case nil: "Couldn't check other apps' sleep assertions"
         }
         if let left = engine.timeRemaining(now: now, conditions: c, limits: limits) {
