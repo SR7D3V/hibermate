@@ -13,13 +13,15 @@ public enum SessionState: String, Codable, Sendable {
     case idle
 }
 
-/// Contents of `sessions/<session_id>.json`. It deliberately stores no prompt
+/// Contents of `sessions/<agent>/<session_id>.json`. It deliberately stores no prompt
 /// text, transcript path, or code: only IDs, PIDs, timestamps, event names, and
 /// the project folder name.
 public struct SessionRecord: Codable, Equatable, Sendable {
     public static let currentVersion = 1
 
     public var version: Int
+    /// Which integration reported this session, e.g. "claude-code".
+    public var agent: AgentID
     public var sessionID: String
     public var state: SessionState
     /// Last hook event name, e.g. "PostToolUse".
@@ -37,10 +39,11 @@ public struct SessionRecord: Codable, Equatable, Sendable {
     /// `tool_use_id`s of tool calls that have started but not finished.
     public var toolsInFlight: [String]
 
-    public init(sessionID: String, state: SessionState, event: String, updatedAt: Double,
+    public init(agent: AgentID = .claudeCode, sessionID: String, state: SessionState, event: String, updatedAt: Double,
                 stateSince: Double? = nil, agentPID: Int32? = nil, agentStartTime: Double? = nil,
                 project: String? = nil, backgroundTaskCount: Int = 0, toolsInFlight: [String] = []) {
         self.version = Self.currentVersion
+        self.agent = agent
         self.sessionID = sessionID
         self.state = state
         self.event = event
@@ -55,6 +58,7 @@ public struct SessionRecord: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case version = "v"
+        case agent
         case sessionID = "session_id"
         case state, event
         case updatedAt = "ts"
@@ -65,6 +69,9 @@ public struct SessionRecord: Codable, Equatable, Sendable {
         case backgroundTaskCount = "bg_count"
         case toolsInFlight = "tools_in_flight"
     }
+
+    /// Stable key across agents.
+    public var key: String { "\(agent.rawValue)/\(sessionID)" }
 
     /// Session IDs become file names, so only a conservative character set is
     /// accepted. This rules out path traversal and odd file names.

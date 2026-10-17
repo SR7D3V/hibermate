@@ -14,18 +14,28 @@ final class FakeProcesses: ProcessTable, @unchecked Sendable {
     func entry(for pid: Int32) -> ProcessInfoEntry? { entries[pid] }
 }
 
+/// Builds real Claude Code hook JSON and runs it through the parser.
 private func ev(_ name: String, _ id: String = "s1", notification: String? = nil, source: String? = nil,
-                bg: Int? = nil, tool: String? = nil, agent: String? = nil, cwd: String? = nil) -> HookEvent {
-    HookEvent(name: name, sessionID: id, notificationType: notification, source: source, cwd: cwd,
-              backgroundTaskCount: bg, toolUseID: tool, agentID: agent)
+                bg: Int? = nil, tool: String? = nil, agent: String? = nil, cwd: String? = nil) -> AgentEvent {
+    var o: [String: Any] = ["hook_event_name": name, "session_id": id, "prompt": "secret"]
+    if let notification { o["notification_type"] = notification }
+    if let source { o["source"] = source }
+    if let bg { o["background_tasks"] = Array(repeating: ["id": "x"], count: bg) }
+    if let tool { o["tool_use_id"] = tool }
+    if let agent { o["agent_id"] = agent }
+    if let cwd { o["cwd"] = cwd }
+    let data = try! JSONSerialization.data(withJSONObject: o)
+    return ClaudeCodeParser.parse(arguments: [], stdin: data)
+        ?? AgentEvent(agent: .claudeCode, sessionID: id, signal: .heartbeat, name: "UNPARSED:\(name)")
 }
 
 /// Applies a sequence of events to one session record.
-private func apply(_ events: [HookEvent], start: SessionRecord? = nil, now: Double = 1000) -> SessionRecord? {
+private func apply(_ events: [AgentEvent], start: SessionRecord? = nil, now: Double = 1000) -> SessionRecord? {
     var record = start
     var t = now
     for e in events {
-        switch HookEventMapping.nextAction(existing: record, event: e, now: t) {
+        if e.name.hasPrefix("UNPARSED:") { t += 1; continue }
+        switch SessionTransitions.nextAction(existing: record, event: e, now: t) {
         case .write(let r): record = r
         case .delete: record = nil
         case .ignore: break
@@ -35,7 +45,7 @@ private func apply(_ events: [HookEvent], start: SessionRecord? = nil, now: Doub
     return record
 }
 
-@Suite("Hook event → session state")
+@Suite("Claude Code hook event → session state")
 struct HookMappingTests {
     @Test func promptMakesWorkingStopMakesIdle() {
         #expect(apply([ev("SessionStart"), ev("UserPromptSubmit")])?.state == .working)
@@ -86,9 +96,17 @@ struct HookMappingTests {
     }
 
     @Test func otherNotificationsAreIgnored() {
-        let r = apply([ev("UserPromptSubmit")])
-        #expect(HookEventMapping.nextAction(existing: r, event: ev("Notification", notification: "auth_success"), now: 5) == .ignore)
-        #expect(HookEventMapping.nextAction(existing: r, event: ev("CwdChanged"), now: 5) == .ignore)
+        func parse(_ o: [String: Any]) -> AgentEvent? {
+            ClaudeCodeParser.parse(arguments: [], stdin: try! JSONSerialization.data(withJSONObject: o))
+        }
+        #expect(parse(["hook_event_name": "Notification", "session_id": "s", "notification_type": "auth_success"]) == nil)
+        #expect(parse(["hook_event_name": "Notification", "session_id": "s"]) == nil)
+        #expect(parse(["hook_event_name": "CwdChanged", "session_id": "s"]) == nil)
+    }
+
+    @Test func parsedEventCarriesNoPromptText() {
+        let e = ev("UserPromptSubmit", cwd: "/a/b")
+        #expect(!String(describing: e).contains("secret"))
     }
 
     @Test func stopWithBackgroundTasksKeepsHolding() {
@@ -211,8 +229,8 @@ struct QueuedPromptTests {
         var h = Harness()
         var allEffects: [Effect] = []
 
-        func send(_ e: HookEvent, pid: Int32) {
-            if case .write(var r) = HookEventMapping.nextAction(existing: records[e.sessionID], event: e, now: h.now) {
+        func send(_ e: AgentEvent, pid: Int32) {
+            if case .write(var r) = SessionTransitions.nextAction(existing: records[e.sessionID], event: e, now: h.now) {
                 r.agentPID = pid
                 r.agentStartTime = 100
                 records[e.sessionID] = r
@@ -259,5 +277,28 @@ struct QueuedPromptTests {
         effects += h.step()
         #expect(effects == [])
         #expect(h.engine.phase == .holding)
+    }
+}
+
+@Suite("Generic integration")
+struct GenericParserTests {
+    @Test func startStopEnd() {
+        func e(_ args: [String]) -> AgentEvent? { GenericParser.parse(arguments: args, stdin: Data()) }
+        #expect(e(["start", "job-1"])?.signal == .promptSubmitted)
+        #expect(e(["heartbeat", "job-1"])?.signal == .activity)
+        #expect(e(["wait", "job-1"])?.signal == .waitingForUser)
+        #expect(e(["stop", "job-1"])?.signal == .idle)
+        #expect(e(["end", "job-1"])?.signal == .sessionEnded)
+        #expect(e(["start"]) == nil)
+        #expect(e(["start", "../x"]) == nil)
+        #expect(e(["explode", "job-1"]) == nil)
+        #expect(e(["start", "job-1"])?.agent == .generic)
+    }
+
+    @Test func agentIDValidation() {
+        #expect(AgentID(rawValue: "claude-code") != nil)
+        #expect(AgentID(rawValue: "Claude") == nil)
+        #expect(AgentID(rawValue: "../x") == nil)
+        #expect(AgentID(rawValue: "") == nil)
     }
 }

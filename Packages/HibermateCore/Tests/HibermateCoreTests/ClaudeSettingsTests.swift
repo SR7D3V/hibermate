@@ -100,7 +100,7 @@ struct ClaudeSettingsMergerTests {
     @Test func installPreservesEverythingAndAddsOnePerEvent() throws {
         let root = try ClaudeSettingsMerger.parse(Data(sampleSettings.utf8))
         let installed = try ClaudeSettingsMerger.install(into: root)
-        #expect(hibermateHandlers(installed) == HookEventMapping.registeredEvents.count)
+        #expect(hibermateHandlers(installed) == ClaudeCodeParser.registeredEvents.count)
         // Other tools' hooks are still there, in order.
         let text = String(decoding: OrderedJSONWriter().serialize(installed), as: UTF8.self)
         #expect(text.contains("/usr/local/bin/other-tool notify"))

@@ -25,7 +25,7 @@ struct HookRunnerTests {
                           "prompt": "SECRET PROMPT TEXT", "transcript_path": "/tmp/t.jsonl",
                           "cwd": "/Users/x/proj"])
         HookRunner.run(input: data, context: context(dir, procs: procs()))
-        let file = dir.appendingPathComponent("sessions/abc-123.json")
+        let file = dir.appendingPathComponent("sessions/claude-code/abc-123.json")
         let text = try String(contentsOf: file, encoding: .utf8)
         #expect(!text.contains("SECRET"))
         #expect(!text.contains("transcript"))
@@ -51,8 +51,7 @@ struct HookRunnerTests {
     func malformedInputIsIgnored(data: Data) throws {
         let dir = makeTempDir()
         #expect(HookRunner.run(input: data, context: context(dir, procs: procs())) == .ignore)
-        let sessions = (try? FileManager.default.contentsOfDirectory(atPath: dir.appendingPathComponent("sessions").path)) ?? []
-        #expect(sessions.filter { $0.hasSuffix(".json") }.isEmpty)
+        #expect(SessionStore(paths: HibermatePaths(supportDirectory: dir)).loadAll().records.isEmpty)
     }
 
     @Test func sessionEndRemovesFile() throws {
@@ -60,7 +59,24 @@ struct HookRunnerTests {
         let p = procs()
         HookRunner.run(input: input(["hook_event_name": "UserPromptSubmit", "session_id": "s"]), context: context(dir, procs: p))
         HookRunner.run(input: input(["hook_event_name": "SessionEnd", "session_id": "s"]), context: context(dir, procs: p))
-        #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("sessions/s.json").path))
+        #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("sessions/claude-code/s.json").path))
+    }
+
+    @Test func agentArgumentSelectsParserAndSeparatesSessions() throws {
+        let dir = makeTempDir()
+        let p = procs()
+        HookRunner.run(arguments: ["generic", "start", "same-id"], input: Data(), context: context(dir, procs: p))
+        HookRunner.run(arguments: ["claude-code"], input: input(["hook_event_name": "Stop", "session_id": "same-id"]),
+                       context: context(dir, procs: p))
+        let records = SessionStore(paths: HibermatePaths(supportDirectory: dir)).loadAll().records
+        #expect(Set(records.map(\.key)) == ["generic/same-id", "claude-code/same-id"])
+        #expect(records.first { $0.agent == .generic }?.state == .working)
+    }
+
+    @Test func unknownAgentArgumentFallsBackToClaude() {
+        #expect(HookRunner.parser(for: ["nope"]).0.agent == .claudeCode)
+        #expect(HookRunner.parser(for: []).0.agent == .claudeCode)
+        #expect(HookRunner.parser(for: ["generic", "start", "x"]).1 == ["start", "x"])
     }
 
     @Test func readOnlySessionsDirectoryFailsSilently() throws {
@@ -79,9 +95,10 @@ struct HookRunnerTests {
         try FileManager.default.createDirectory(at: paths.sessionsDirectory, withIntermediateDirectories: true)
         let store = SessionStore(paths: paths)
         try store.save(SessionRecord(sessionID: "good", state: .working, event: "UserPromptSubmit", updatedAt: 1))
-        let bad = paths.sessionsDirectory.appendingPathComponent("bad.json")
+        let agentDir = paths.agentDirectory(.claudeCode)
+        let bad = agentDir.appendingPathComponent("bad.json")
         try Data("{not json".utf8).write(to: bad)
-        let mismatched = paths.sessionsDirectory.appendingPathComponent("other.json")
+        let mismatched = agentDir.appendingPathComponent("other.json")
         try JSONEncoder().encode(SessionRecord(sessionID: "good", state: .working, event: "x", updatedAt: 1)).write(to: mismatched)
 
         let result = store.loadAll()

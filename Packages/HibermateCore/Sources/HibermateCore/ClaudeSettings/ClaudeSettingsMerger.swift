@@ -24,7 +24,7 @@ public enum ClaudeSettingsMerger {
     /// The shell guard means a leftover entry still exits 0 silently if
     /// Hibermate has been deleted (invariant 4).
     public static let hookCommand =
-        #"f="$HOME/Library/Application Support/Hibermate/hooks/hibermate-hook"; [ -x "$f" ] && "$f" >/dev/null 2>&1; exit 0"#
+        #"f="$HOME/Library/Application Support/Hibermate/hooks/hibermate-hook"; [ -x "$f" ] && "$f" claude-code >/dev/null 2>&1; exit 0"#
 
     public static let hookTimeoutSeconds = 5
 
@@ -67,7 +67,7 @@ public enum ClaudeSettingsMerger {
     }
 
     /// Returns `root` with exactly one Hibermate entry per event. Idempotent.
-    public static func install(into root: JSONValue, events: [String] = HookEventMapping.registeredEvents) throws -> JSONValue {
+    public static func install(into root: JSONValue, events: [String] = ClaudeCodeParser.registeredEvents) throws -> JSONValue {
         guard case .object(var top) = removeOurs(from: root) else {
             throw ClaudeSettingsError.unexpectedShape("top level is not an object")
         }

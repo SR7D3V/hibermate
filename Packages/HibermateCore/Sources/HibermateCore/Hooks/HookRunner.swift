@@ -17,15 +17,25 @@ public enum HookRunner {
         }
     }
 
+    /// Picks the parser from the first argument: `hibermate-hook <agent> [args…]`.
+    /// With no argument it falls back to Claude Code, for entries written before
+    /// the agent argument existed.
+    public static func parser(for arguments: [String]) -> (AgentEventParser.Type, [String]) {
+        guard let first = arguments.first, let id = AgentID(rawValue: first),
+              let parser = AgentRegistry.parsers[id] else { return (ClaudeCodeParser.self, arguments) }
+        return (parser, Array(arguments.dropFirst()))
+    }
+
     @discardableResult
-    public static func run(input: Data, context: Context) -> RecordAction {
+    public static func run(arguments: [String] = [], input: Data, context: Context) -> RecordAction {
         let fm = FileManager.default
         var isDir: ObjCBool = false
         // Not set up, or uninstalled: do nothing, and don't create directories.
         guard fm.fileExists(atPath: context.paths.supportDirectory.path, isDirectory: &isDir), isDir.boolValue else {
             return .ignore
         }
-        guard let event = HookEvent.parse(input) else { return .ignore }
+        let (parser, rest) = parser(for: arguments)
+        guard let event = parser.parse(arguments: rest, stdin: input) else { return .ignore }
 
         try? fm.createDirectory(at: context.paths.sessionsDirectory, withIntermediateDirectories: true,
                                 attributes: [.posixPermissions: 0o700])
@@ -40,14 +50,14 @@ public enum HookRunner {
         }
 
         let store = SessionStore(paths: context.paths)
-        let existing = store.load(event.sessionID)
-        let action = HookEventMapping.nextAction(existing: existing, event: event, now: context.now)
+        let existing = store.load(event.agent, event.sessionID)
+        let action = SessionTransitions.nextAction(existing: existing, event: event, now: context.now)
 
         switch action {
         case .ignore:
             break
         case .delete:
-            store.remove(event.sessionID)
+            store.remove(event.agent, event.sessionID)
         case .write(var record):
             if record.agentPID == nil || !context.processTable.isAlive(pid: record.agentPID!, startTime: record.agentStartTime) {
                 if let agent = AgentAncestry.findAgent(startingAt: context.parentPID, table: context.processTable) {
