@@ -60,5 +60,7 @@ Bundle IDs `com.sr7d3v.hibermate` and `.helper`; GPL-3.0; unsigned (ad-hoc) rele
 - [x] HibermateCore package (state machine, safety policy, sessions, hook runner, settings merge, helper core): 119 tests passing
 - [x] Scope widened to any AI tool (SPEC A.5, docs/AGENTS.md): 7 hook integrations, activity watching, generic CLI
 - [x] Xcode project: app, helper, and hook binary; builds; hook p95 ~6 ms. Not yet run against a real helper or real agent sessions
-- [ ] In-app uninstall · uninstall.sh · build-dmg.sh · release workflow · README · manual checklist · icons
+- [x] Dry-run end-to-end on the dev Mac: hook → hold in 70 ms → Stop → grace 60 s → release (no power changes)
+- [x] In-app uninstall, uninstall.sh, build-dmg.sh (universal, ad-hoc, 1.2 MB DMG verified), release workflow, README, docs/MANUAL_TESTS.md
+- [ ] Real helper test on the dev Mac (needs user approval of each command) · bear icon
 - [ ] Real-world verification of each integration (payload fields, trust prompts; see "unconfirmed" in AGENTS.md)

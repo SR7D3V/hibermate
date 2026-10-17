@@ -1,0 +1,87 @@
+# Builds the DMG when a version tag (v*) is pushed and attaches it to a
+# DRAFT GitHub Release, so it can be reviewed before publishing.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    env:
+      HAS_SIGNING_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches Config/Version.xcconfig
+        run: |
+          VERSION="$(sed -n 's/^MARKETING_VERSION *= *//p' Config/Version.xcconfig | tr -d '[:space:]')"
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match MARKETING_VERSION $VERSION" >&2
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Unit tests
+        run: scripts/test.sh
+
+      # Optional Developer ID signing. Skipped unless these repository secrets exist:
+      # MACOS_CERTIFICATE (base64 .p12), MACOS_CERTIFICATE_PASSWORD, MACOS_SIGN_IDENTITY,
+      # MACOS_TEAM_ID, and for notarization NOTARY_APPLE_ID, NOTARY_PASSWORD.
+      - name: Import signing certificate
+        if: env.HAS_SIGNING_CERT == 'true'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN"
+          rm "$RUNNER_TEMP/cert.p12"
+          echo "HIBERMATE_SIGN_IDENTITY=$MACOS_SIGN_IDENTITY" >> "$GITHUB_ENV"
+          echo "HIBERMATE_TEAM_ID=$MACOS_TEAM_ID" >> "$GITHUB_ENV"
+          if [ -n "$NOTARY_APPLE_ID" ]; then
+            xcrun notarytool store-credentials hibermate-ci --apple-id "$NOTARY_APPLE_ID" \
+              --team-id "$MACOS_TEAM_ID" --password "$NOTARY_PASSWORD" --keychain "$KEYCHAIN"
+            echo "HIBERMATE_NOTARY_PROFILE=hibermate-ci" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build DMG
+        run: scripts/build-dmg.sh
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="$(cut -d' ' -f1 "dist/Hibermate-$VERSION.dmg.sha256")"
+          SIGNED="unsigned (ad-hoc). See the README for how to open it."
+          [ -n "${HIBERMATE_SIGN_IDENTITY:-}" ] && SIGNED="signed with Developer ID"
+          {
+            echo "## Hibermate $VERSION"
+            echo
+            echo "See [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/CHANGELOG.md)."
+            echo
+            echo "**Build:** $SIGNED"
+            echo
+            echo "**SHA-256** \`Hibermate-$VERSION.dmg\`:"
+            echo '```'
+            echo "$SHA"
+            echo '```'
+            echo "Verify with: \`shasum -a 256 Hibermate-$VERSION.dmg\`"
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "$GITHUB_REF_NAME" --draft --title "Hibermate $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            "dist/Hibermate-$VERSION.dmg" "dist/Hibermate-$VERSION.dmg.sha256"
