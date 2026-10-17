@@ -1,6 +1,6 @@
 # Hibermate implementation plan
 
-Status: **draft, awaiting approval.** No app code will be written until this is approved.
+Status: **approved 2026-10-17**, with the decisions in §10.
 Inputs: [SPEC.md](SPEC.md), including Appendix A with the verified hooks API and Apple specs.
 
 ## 1. Components
@@ -90,6 +90,12 @@ For each event, Hibermate adds one matcher group with `"matcher": ""` and this h
 - **Stale session:** WORKING or BACKGROUND with no heartbeat for longer than the stale window → removed.
 - Malformed or unreadable files are ignored (and deleted if older than the stale window). They never hold.
 - **Aggregation:** the hold is wanted if any live session is WORKING or BACKGROUND, using a set of session IDs as the reference count. WAITING counts only until its timeout.
+- **Queued prompts (user requirement):** a user may queue several prompts in one or more CLIs before closing the lid, and all of them must run before the Mac sleeps. Claude Code either feeds a queued message into the current turn, so no `Stop` fires and the hold simply continues, or ends the turn with `Stop` and then submits the next queued prompt, which fires `UserPromptSubmit`. The second case leaves a short gap with no work. Handling:
+  - The grace period, which keeps `SleepDisabled=1`, spans that gap. Grace can't be set below 30 s, so a `Stop` → `UserPromptSubmit` handoff never reaches release.
+  - Sessions are reference-counted, so a queue in one terminal keeps holding while another terminal finishes.
+  - `Stop` with background tasks keeps holding (BACKGROUND, above).
+  - Hooks give no way to read the queue directly. The exact `Stop`/`UserPromptSubmit` timing between queued prompts gets measured on a real Claude Code session before release (manual checklist), and the 30 s floor gets raised if it falls short.
+  - Tests cover: `Stop` followed by `UserPromptSubmit` within grace → no restore and no helper churn; three queued prompts across two sessions → one continuous hold; the queue drained → grace → sleep.
 - **Process watching** (off by default) feeds synthetic sessions into the same aggregator. A watched process counts as working if it exists and its CPU over the last 30 s is above 2%.
 
 ## 4. State machine
@@ -108,7 +114,7 @@ The machine is a pure value type, `(State, Event, Environment) → (State, [Effe
 | holding/grace | helper call fails or the connection drops | — | idle (fail safe), restore attempted, warning icon |
 | any | user "Release now", Quit, Uninstall | — | idle: restore and release, **no sleep** (the user is at the machine) |
 
-**Proposed re-arm rule after a forced release (decision needed, §10):** stay latched (no new holds) until the lid has been opened again, *and* thermal is `.nominal`/`.fair`, *and* the battery is above threshold + 5% or on AC. Without this rule, the next prompt from a background task could immediately re-hold a Mac that was just released for heat, or chain max-hold windows indefinitely.
+**Re-arm rule after a forced release (approved):** stay latched (no new holds) until the lid has been opened again, *and* thermal is `.nominal`/`.fair`, *and* the battery is above threshold + 5% or on AC. Without this rule, the next prompt from a background task could immediately re-hold a Mac that was just released for heat, or chain max-hold windows indefinitely.
 
 **Display sleep is never prevented.**
 
@@ -117,10 +123,8 @@ The machine is a pure value type, `(State, Event, Environment) → (State, [Effe
 - **Thermal:** `.critical` → forced release, plus sleep if the lid is closed and no external display is connected, even when other processes hold assertions. `.serious` → forced release, sleep only if invariant 3 holds. `.fair` sustained for `fairTimeout` while the lid is closed: 10 min with fans, 5 min fanless, measured continuously, with the timer reset whenever the state leaves `.fair` or the lid opens.
 - **Fanless detection:** `sysctlbyname("hw.model")` checked against `FanlessModels.swift`: MacBookAir10,1, Mac14,2, Mac14,15, Mac15,12, Mac15,13, Mac16,12, Mac16,13, Mac17,3, Mac17,4, each with its source URL. **An unknown identifier counts as fanless** (the stricter choice). Known fan models are listed explicitly and fall into the 10-minute group.
 - **Battery:** read from `IOPSCopyPowerSourcesInfo`. On battery at or below the threshold (default 20%) → forced release. Low Power Mode (`ProcessInfo.isLowPowerModeEnabled` plus its notification) caps the hold at min(30 min, max hold). If `kIOPSBatteryHealthConditionKey` reports a service condition, the menu shows a warning.
-- **Max hold:** default 3 h, hard ceiling 8 h, measured as total time in `holding`. Time in grace counts too.
-- **`SafetyLimits`** clamps every setting so it can only get stricter: `maxHold ≤ 3h`, `batteryThreshold ≥ 20%`, `fairTimeout ≤ default(model)`, `permissionWait ≤ 5m`, `staleWindow ≤ 15m`, `grace ≤ 60s`. Values outside these bounds are rejected or clamped, and the UI only offers the safe range. There is no thermal on/off toggle anywhere.
-
-  **Ambiguity:** read literally, "can only tighten" makes 3 h the *maximum* setting, so the 8 h hard ceiling could never be reached. This plan follows the spec literally: users can choose 0.5–3 h, and the 8 h ceiling is a separate constant that protects against a corrupted settings file. If you meant "users may raise max hold to 8 h," tell me.
+- **Max hold (user decision, 2026-10-17, supersedes the spec's 3 h / 8 h):** default **4 h**. Users may set anything from **15 min to 12 h**. **12 h is the hard ceiling**: no setting, corrupted file, or code path can exceed it. Raising the ceiling requires a new release. The limit is measured as total time in `holding`, and time in grace counts too. The thermal, battery, and Low Power Mode rules apply regardless, so a long max hold never weakens them.
+- **`SafetyLimits`** clamps every other setting so it can only get stricter: `batteryThreshold ≥ 20%`, `fairTimeout ≤ default(model)`, `permissionWait ≤ 5m`, `staleWindow ≤ 15m`. Grace is the exception: 30 s–5 min, default 60 s. A longer grace only extends a hold that's already bounded by max hold, and the 30 s floor protects queued prompts (§3). Out-of-range values are clamped, and the UI only offers valid ranges. There is no thermal on/off toggle anywhere.
 - **SMC temperatures** are optional and informational only. They are read through a protocol, any failure produces `nil`, and they are labeled "unofficial" in the menu. They are not wired into any release decision in v1, so they can't loosen anything.
 - Every forced release posts a notification (if enabled) and writes an `os_log` entry with the thermal state, battery level, lid state, and hold duration.
 
@@ -142,8 +146,10 @@ The machine is a pure value type, `(State, Event, Environment) → (State, [Effe
 
 ## 7. Privileged helper
 
-- **XPC interface:** `setSleepDisabled(Bool)`, `sleepNow()`, and `heartbeat()`. It takes no other arguments and runs no commands. **Note:** `heartbeat()` is a third method beyond the spec's two. The dead-man switch needs it, so I'm flagging it.
-- **Caller check:** `NSXPCConnection.setCodeSigningRequirement(...)` (macOS 13+). With Developer ID the requirement is `identifier "com.<user>.hibermate" and anchor apple generic and certificate leaf[subject.OU] = "<TEAMID>"`. With ad-hoc signing there is no team ID to pin. See the security note in §10.
+- **XPC interface:** `setSleepDisabled(Bool)`, `sleepNow()`, and `heartbeat()` (approved). It takes no other arguments and runs no commands. `heartbeat()` only resets the dead-man timer.
+- **Caller check:** `NSXPCConnection.setCodeSigningRequirement(...)` (macOS 13+).
+  - **v1 ships unsigned (ad-hoc).** The requirement is `identifier "com.sr7d3v.hibermate"`. The helper also checks that the caller's executable, resolved from its audit token, is exactly `/Applications/Hibermate.app/Contents/MacOS/Hibermate`. This blocks casual spoofing but not a determined local attacker who can write to /Applications. The impact is limited to the two power calls. This is documented in the README.
+  - **Upgrade path:** with Developer ID, add `anchor apple generic and certificate leaf[subject.OU] = "<TEAMID>"`. That's a single constant in the helper.
 - **Semantics that enforce invariant 2:** `setSleepDisabled(true)` → if no hold is recorded, read the current SleepDisabled and save it as `original` in a root-owned `/Library/Application Support/Hibermate/helper-state.plist`, then set it to 1. `setSleepDisabled(false)` → write back `original` and **never** set 0 unconditionally. If the user already had 1, it stays 1. Then delete the state file, so it exists only while a hold is active.
 - **Dead-man switch:** while a hold is active, if 2 min pass without a heartbeat (the app sends one every 30 s), the helper restores. It also restores immediately when the XPC connection is invalidated (the app crashed or was force-quit) and on SIGTERM (unregistration or uninstall). Timers use the monotonic clock.
 - **Reconciliation:** on helper start, a leftover state file means a hold was interrupted (crash or reboot), so the helper restores and deletes it. On app launch and wake, the app asks the helper to reconcile: if the app isn't holding, the helper restores.
@@ -152,6 +158,7 @@ The machine is a pure value type, `(State, Event, Environment) → (State, [Effe
 ## 8. Distribution
 
 - **`scripts/build-dmg.sh`:** `xcodebuild archive` (Release, `ARCHS="arm64 x86_64"`), `-exportArchive` (Developer ID method if `HIBERMATE_SIGN_IDENTITY` is set, otherwise ad-hoc), and an optional notarize-and-staple step if `HIBERMATE_NOTARY_PROFILE` (a `notarytool` keychain profile) is set. Then a staging folder (`Hibermate.app` + `Applications` symlink), `hdiutil create -format UDZO`, writes `dist/Hibermate-<ver>.dmg` and `.sha256`, and runs `lipo -archs` to verify the binary is universal. It uses only built-in tools; the background image is skipped in v1.
+- **Signing (user decision):** v1 releases are **ad-hoc signed** (`codesign -s -`; Apple silicon requires at least that) and not notarized. The README explains *System Settings → Privacy & Security → Open Anyway*. Local development uses your free Apple ID "Apple Development" (Personal Team) certificate or ad-hoc. The Developer ID and notarytool path stays in the script behind env vars for later. Before the first public release, I'll test helper registration on a clean user account with an ad-hoc build and report the results.
 - **Version:** `Config/Version.xcconfig` is the only source, and the script reads it from there.
 - **`release.yml`:** on `v*`, a macOS runner checks that the tag matches the xcconfig version, runs `swift test`, runs `build-dmg.sh`, and creates a **draft** release with `gh release create --draft`, the DMG attached, and the checksum in the notes. Signing secrets come only from Actions secrets, and the step is skipped if they're absent.
 - **Location gate:** the app registers the helper only from `/Applications` and never when translocated. Otherwise it shows a "Move to Applications" window with a Quit button.
@@ -160,18 +167,18 @@ The machine is a pure value type, `(State, Event, Environment) → (State, [Effe
 ## 9. Testing
 
 **Unit tests** (Swift Testing, in `HibermateCore`, using fakes plus an injectable `FakeClock`; no real `pmset` or sleep):
-- **Safety:** critical-forces-sleep-despite-assertions (lid closed); serious-forces-release; fair-timeout for fan (10 m) and fanless (5 m) models; unknown-model-is-fanless; no start or resume under serious/critical; battery threshold crossing; Low Power Mode cap; max hold and the 8 h ceiling; loosening settings rejected or clamped; SMC unavailable.
-- **Invariants:** overlapping sessions; a lost Stop (stale reaper); `kill -9` (fake PID exit); app crash (HelperCore dead-man fires with no heartbeat, on connection invalidation, and on SIGTERM); original `SleepDisabled = 1` preserved; lid open (no sleep); external display (no sleep); foreign assertion (no sleep unless critical); permission-wait timeout; malformed or missing session files; corrupt settings.json (refuse); merge preserves foreign hooks and unmerge round-trips byte-equivalently; helper unreachable or unapproved (no hold); outside /Applications or translocated (no registration); reboot mid-hold (reconcile); idempotent effects; bad `session_id` rejected; the hook writes nothing to stdout and stderr and always exits 0 (an integration test runs the built binary with garbage stdin, a missing dir, and a read-only dir, and asserts p95 < 100 ms).
+- **Safety:** critical-forces-sleep-despite-assertions (lid closed); serious-forces-release; fair-timeout for fan (10 m) and fanless (5 m) models; unknown-model-is-fanless; no start or resume under serious/critical; battery threshold crossing; Low Power Mode cap; max hold (default 4 h) and the 12 h hard ceiling; loosening settings rejected or clamped; SMC unavailable.
+- **Invariants:** overlapping sessions; a lost Stop (stale reaper); `kill -9` (fake PID exit); app crash (HelperCore dead-man fires with no heartbeat, on connection invalidation, and on SIGTERM); original `SleepDisabled = 1` preserved; lid open (no sleep); external display (no sleep); foreign assertion (no sleep unless critical); permission-wait timeout; malformed or missing session files; corrupt settings.json (refuse); merge preserves foreign hooks and unmerge round-trips byte-equivalently; helper unreachable or unapproved (no hold); outside /Applications or translocated (no registration); reboot mid-hold (reconcile); queued prompts (Stop → UserPromptSubmit within grace keeps one continuous hold; three queued prompts across two sessions); re-arm latch; idempotent effects; bad `session_id` rejected; the hook writes nothing to stdout and stderr and always exits 0 (an integration test runs the built binary with garbage stdin, a missing dir, and a read-only dir, and asserts p95 < 100 ms).
 
-**Manual checklist** (`docs/MANUAL_TESTS.md`): the scenarios from the spec, plus checking the hook PID-walk against a real Claude Code process, the long-lived-assertion check, and a clean-account ad-hoc helper registration test.
+**Manual checklist** (`docs/MANUAL_TESTS.md`): the scenarios from the spec, plus checking the hook PID-walk against a real Claude Code process, measuring the Stop → UserPromptSubmit gap between queued prompts, the long-lived-assertion check, and a clean-account ad-hoc helper registration test.
 
-## 10. Decisions I need from you
+## 10. Decisions (made by the user, 2026-10-17)
 
-1. **GitHub username for the bundle ID.** The remote is `github.com/SR7D3V/hibermate`. Should I use `com.sr7d3v.hibermate` / `com.sr7d3v.hibermate.helper`?
-2. **License:** MIT or GPL-3.0.
-3. **Release signing:** Developer ID + notarization, or unsigned/ad-hoc. Security note for ad-hoc: the helper can't pin a Team ID, so it can only check the bundle identifier, and any local process could re-sign itself with that identifier and call `setSleepDisabled`/`sleepNow`. The impact is limited to those two operations, but it is a real weakening. I also expect `SMAppService.daemon` to be unreliable unsigned; I'll verify on a clean account either way.
-4. **Attribution setting:** may I add `{"attribution": {"commit": "", "pr": ""}}` to the project's `.claude/settings.json`?
-5. **Storing the project folder name** (`basename(cwd)`) in session files so the menu can show it, which slightly extends invariant 5's "only IDs, PIDs, timestamps, event names" list. Is that OK?
-6. **The re-arm latch after a forced release** (§4): OK as proposed?
-7. **Max-hold setting range** (§5 ambiguity): is 3 h the user maximum (literal spec), or may users raise it up to 8 h?
-8. **`heartbeat()` as a third XPC method** (§7): OK?
+1. **Bundle IDs:** `com.sr7d3v.hibermate` and `com.sr7d3v.hibermate.helper`.
+2. **License:** GPL-3.0.
+3. **Release signing:** unsigned (ad-hoc) for now; there's no paid Developer ID yet. See §7 and §8.
+4. **Attribution:** turned off in the project's `.claude/settings.json` (`attribution.commit` and `attribution.pr` set to `""`).
+5. **Project folder name:** allowed. Session files store `basename(cwd)` so the menu can show what's running and where. Invariant 5 is amended accordingly; full paths are not stored.
+6. **Re-arm latch after a forced release:** approved with all three conditions (lid reopened, thermal nominal or fair, battery above threshold + 5% or on AC).
+7. **Max hold:** user-adjustable from 15 min to 12 h. The default is 4 h, and 12 h is the hard ceiling (raising it needs a new release). This supersedes the spec's 3 h default and 8 h ceiling.
+8. **Compiled hook binary and the `heartbeat()` XPC method:** approved. New requirement: prompts queued before the lid closes must all run before sleep (§3).

@@ -244,3 +244,14 @@ Sources read: https://code.claude.com/docs/en/hooks (docs.claude.com now redirec
 7. **There is no `id` or `description` field on hook handlers**, and how unknown keys are handled is undocumented. Hibermate therefore identifies its entries by their unique command path (`…/Application Support/Hibermate/hooks/hibermate-hook`) instead of adding custom keys.
 8. **Timeouts:** the default is 600 s (30 s for `UserPromptSubmit`). `SessionEnd` hooks share a 1.5 s budget. Handlers accept `timeout`, `async`, `if`, `statusMessage`, `once`, and `shell`/`args`. A matcher of `""` or `"*"` matches everything.
 9. **Attribution setting:** `"attribution": {"commit": "", "pr": ""}` hides the trailer and PR line. `includeCoAuthoredBy` is deprecated (since v2.0.62). `"attribution": false` needs v2.1.281+, and older versions skip the whole file, so empty strings are the safer form.
+
+## A.4 Decisions that change this spec (user, 2026-10-17)
+
+These supersede the matching lines in the verbatim spec above. Details are in [PLAN.md §10](PLAN.md).
+
+- **Bundle IDs:** `com.sr7d3v.hibermate` and `com.sr7d3v.hibermate.helper`. **License:** GPL-3.0. **Releases:** unsigned (ad-hoc) for now.
+- **Max hold:** user-adjustable from 15 min to 12 h, default 4 h, **hard ceiling 12 h**. This replaces "default 3 hours, hard ceiling 8 hours." Thermal, battery, and Low Power Mode rules still cannot be loosened.
+- **Invariant 5 amended:** session files may also store the project folder name (`basename(cwd)`, never the full path).
+- **Re-arm latch:** after a forced release, there are no new holds until the lid has been reopened, thermal is nominal or fair, and the battery is above threshold + 5% or on AC.
+- **New requirement:** prompts queued in one or more CLIs before the lid closes must all run before the Mac sleeps.
+- **Hook implementation:** a compiled Swift binary behind a one-line `sh` guard, not a script. **XPC:** adds `heartbeat()`.
