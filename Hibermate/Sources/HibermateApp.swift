@@ -48,10 +48,11 @@ struct MenuBarIcon: View {
     let icon: MenuSnapshot.Icon
 
     var body: some View {
-        // SF Symbols until the bear template image exists.
+        // Bear template images (scripts/icons/render-icons.swift): asleep when
+        // the Mac may sleep normally, one eye open while keeping it awake.
         switch icon {
-        case .idle: Image(systemName: "moon.zzz")
-        case .holding: Image(systemName: "eye")
+        case .idle: Image("MenuBarSleeping")
+        case .holding: Image("MenuBarAwake")
         case .grace: Image(systemName: "hourglass")
         case .warning: Image(systemName: "exclamationmark.triangle")
         case .setupNeeded: Image(systemName: "gearshape")

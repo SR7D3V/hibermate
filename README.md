@@ -103,7 +103,6 @@ sh uninstall.sh
 - Automatic updates (Sparkle)
 - Homebrew cask: `brew install --cask hibermate`
 - More integrations (VS Code agent hooks, Cline, Windsurf, Goose hooks, Antigravity CLI)
-- The sleepy-bear icon
 
 ## Building from source
 
