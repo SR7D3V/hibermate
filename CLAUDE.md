@@ -1,6 +1,6 @@
 # Hibermate
 
-macOS menu bar app (SwiftUI, macOS 14+, universal). It keeps a MacBook awake with the lid closed **only while an AI agent (Claude Code first) is working**, then lets it sleep safely. When no agent is working, macOS must behave as if Hibermate were not installed. Free, open source, distributed as a DMG on GitHub Releases.
+macOS menu bar app (SwiftUI, macOS 14+, universal). It keeps a MacBook awake with the lid closed **only while an AI agent or LLM is working**, then lets it sleep safely. It covers any tool on the machine, not just Claude Code: see [docs/AGENTS.md](docs/AGENTS.md). When no agent is working, macOS must behave as if Hibermate were not installed. Free, open source, distributed as a DMG on GitHub Releases.
 
 The full spec, kept verbatim, is in [docs/SPEC.md](docs/SPEC.md). Its Appendix A holds verification notes. Read it before making non-trivial changes.
 
@@ -36,7 +36,11 @@ The full spec, kept verbatim, is in [docs/SPEC.md](docs/SPEC.md). Its Appendix A
 - **App:** `MenuBarExtra`, `LSUIElement=YES`, not sandboxed. A state machine drives everything: Idle → Holding → GracePeriod → Idle, plus ForcedRelease. All transitions are idempotent. After a forced release it stays latched until the lid is reopened, thermal is nominal or fair, and the battery is above threshold + 5% or on AC. Prompts queued before the lid closes must all run: grace (min 30 s) spans the Stop → UserPromptSubmit gap.
 - **Privileged helper:** an `SMAppService.daemon` with its plist embedded in the bundle. Its XPC interface has only `setSleepDisabled(Bool)` and `sleepNow()`, plus a heartbeat. It verifies the caller's code signature. A dead-man switch restores the original `SleepDisabled` after 2 min without a heartbeat. It reconciles state on start, app launch, and wake.
 - **Hold mechanism:** `pmset -a disablesleep 1` (via the helper) plus an `IOPMAssertion` PreventUserIdleSystemSleep. Display sleep is never prevented.
-- **Agent detection:** Claude Code hooks write `~/Library/Application Support/Hibermate/sessions/<session_id>.json`. Hook entries are merged into `~/.claude/settings.json`: back up first, tag our entries, validate, write atomically, refuse to edit a corrupt file. Optional process watching (off by default).
+- **Agent detection** (all sources feed the same aggregator, engine, and safety rules):
+  - **Hooks:** `hibermate-hook <agent> [Event]` writes `~/Library/Application Support/Hibermate/sessions/<agent>/<id>.json`. Per-tool parsers live in `Agents/`. Hook configs are edited with `HookConfigFile` and a `HookConfigSchema`: back up first, recognize our entries by command path, validate, write atomically, refuse to edit a corrupt file. Supported: Claude Code, Codex, Gemini CLI, Qwen Code, Copilot CLI, Cursor, OpenCode (plugin).
+  - **Activity watching** (off by default; chosen per tool): CPU plus IORegistry per-process GPU time for local LLMs (Ollama, llama.cpp, MLX, vLLM, LM Studio, LocalAI) and hookless CLIs.
+  - **Generic:** `hibermate-hook generic start|heartbeat|wait|stop|end <id>`.
+  - Never hook events that block when the hook prints nothing (Cursor permission hooks, Copilot `preToolUse`).
 - The helper is registered only when the app runs from `/Applications`, never when translocated. It never holds before the user approves it in Login Items.
 
 ## Building and testing
@@ -54,4 +58,7 @@ Bundle IDs `com.sr7d3v.hibermate` and `.helper`; GPL-3.0; unsigned (ad-hoc) rele
 - [x] Plan approved: [docs/PLAN.md](docs/PLAN.md)
 - [x] Housekeeping: LICENSE (GPL-3.0), .gitignore, CHANGELOG.md, .claude/settings.json
 - [x] HibermateCore package (state machine, safety policy, sessions, hook runner, settings merge, helper core): 119 tests passing
-- [ ] Hook binary · helper · app UI · Xcode project · build-dmg.sh · release workflow · uninstall.sh · README · manual checklist
+- [x] Scope widened to any AI tool (SPEC A.5, docs/AGENTS.md): 7 hook integrations, activity watching, generic CLI
+- [x] Xcode project: app, helper, and hook binary; builds; hook p95 ~6 ms. Not yet run against a real helper or real agent sessions
+- [ ] In-app uninstall · uninstall.sh · build-dmg.sh · release workflow · README · manual checklist · icons
+- [ ] Real-world verification of each integration (payload fields, trust prompts; see "unconfirmed" in AGENTS.md)

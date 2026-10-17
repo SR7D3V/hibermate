@@ -39,6 +39,8 @@ struct OnboardingView: View {
                     ForEach(controller.integrations, id: \.id) { integration in
                         integrationRow(integration)
                     }
+                    Text("Local models (Ollama, llama.cpp, MLX, LM Studio…) and tools without hooks can be watched by activity in Settings.")
+                        .font(.caption).foregroundStyle(.secondary)
                     if let integrationError {
                         Text(integrationError).foregroundStyle(.red).font(.caption)
                     }
@@ -48,7 +50,7 @@ struct OnboardingView: View {
             }
         }
         .padding(24)
-        .frame(width: 560)
+        .frame(width: 600)
     }
 
     @ViewBuilder private var helperStep: some View {

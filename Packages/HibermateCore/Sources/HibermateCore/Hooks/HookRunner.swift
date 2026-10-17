@@ -35,7 +35,14 @@ public enum HookRunner {
             return .ignore
         }
         let (parser, rest) = parser(for: arguments)
-        guard let event = parser.parse(arguments: rest, stdin: input) else { return .ignore }
+        guard var event = parser.parse(arguments: rest, stdin: input) else { return .ignore }
+        let agentProcess = AgentAncestry.findAgent(startingAt: context.parentPID, table: context.processTable)
+        // Another tool running Claude Code's hook entries (e.g. Copilot CLI):
+        // file the session under the tool that actually ran it.
+        if event.agent == .claudeCode, let name = agentProcess?.name,
+           let relabeled = AgentRegistry.relabelByProcessName[name] {
+            event.agent = relabeled
+        }
 
         try? fm.createDirectory(at: context.paths.sessionsDirectory, withIntermediateDirectories: true,
                                 attributes: [.posixPermissions: 0o700])
@@ -59,11 +66,10 @@ public enum HookRunner {
         case .delete:
             store.remove(event.agent, event.sessionID)
         case .write(var record):
-            if record.agentPID == nil || !context.processTable.isAlive(pid: record.agentPID!, startTime: record.agentStartTime) {
-                if let agent = AgentAncestry.findAgent(startingAt: context.parentPID, table: context.processTable) {
-                    record.agentPID = agent.pid
-                    record.agentStartTime = agent.startTime
-                }
+            if record.agentPID == nil || !context.processTable.isAlive(pid: record.agentPID!, startTime: record.agentStartTime),
+               let agent = agentProcess {
+                record.agentPID = agent.pid
+                record.agentStartTime = agent.startTime
             }
             try? store.save(record)
             return .write(record)

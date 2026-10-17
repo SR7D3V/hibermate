@@ -53,8 +53,9 @@ public struct UserSettings: Codable, Equatable, Sendable {
     public var fairTimeout: TimeInterval? = nil
     public var permissionWait: TimeInterval = SafetyLimits.permissionWaitDefault
     public var staleWindow: TimeInterval = SafetyLimits.staleWindowDefault
-    public var processWatching = false
-    public var watchedProcessNames: [String] = ["codex", "aider", "gemini"]
+    /// Activity-watching rule IDs (see `ActivityCatalog`) the user turned on.
+    /// Empty means process watching is off, which is the default.
+    public var watchedTools: [String] = []
     public var notificationsEnabled = true
 
     public init() {}
@@ -70,8 +71,7 @@ public struct UserSettings: Codable, Equatable, Sendable {
         fairTimeout = (try? c.decodeIfPresent(TimeInterval.self, forKey: .fairTimeout)) ?? nil
         permissionWait = (try? c.decodeIfPresent(TimeInterval.self, forKey: .permissionWait)) ?? d.permissionWait
         staleWindow = (try? c.decodeIfPresent(TimeInterval.self, forKey: .staleWindow)) ?? d.staleWindow
-        processWatching = (try? c.decodeIfPresent(Bool.self, forKey: .processWatching)) ?? d.processWatching
-        watchedProcessNames = (try? c.decodeIfPresent([String].self, forKey: .watchedProcessNames)) ?? d.watchedProcessNames
+        watchedTools = (try? c.decodeIfPresent([String].self, forKey: .watchedTools)) ?? d.watchedTools
         notificationsEnabled = (try? c.decodeIfPresent(Bool.self, forKey: .notificationsEnabled)) ?? d.notificationsEnabled
     }
 

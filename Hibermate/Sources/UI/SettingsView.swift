@@ -30,6 +30,13 @@ struct SettingsView: View {
                 Text("Thermal protection is always on. These limits are Hibermate's own design choices; Apple doesn't publish internal temperature limits.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Activity watching (local models and tools without hooks)") {
+                Text("Hibermate looks at CPU and GPU use of these programs. A loaded but idle model doesn't keep the Mac awake. Off by default.")
+                    .font(.caption).foregroundStyle(.secondary)
+                ForEach(ActivityCatalog.tools, id: \.id) { tool in
+                    Toggle(tool.displayName + (tool.kind == .localModel ? "" : " (command line)"), isOn: watchBinding(tool.id))
+                }
+            }
             Section("General") {
                 Toggle("Notifications for safety releases", isOn: $controller.settings.notificationsEnabled)
                 Toggle("Launch at login", isOn: $launchAtLogin)
@@ -45,6 +52,16 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 480)
         .padding(.vertical)
+    }
+
+    private func watchBinding(_ id: AgentID) -> Binding<Bool> {
+        Binding(
+            get: { controller.settings.watchedTools.contains(id.rawValue) },
+            set: { on in
+                controller.settings.watchedTools.removeAll { $0 == id.rawValue }
+                if on { controller.settings.watchedTools.append(id.rawValue) }
+            }
+        )
     }
 
     private var fairTimeoutBinding: WritableKeyPath<UserSettings, TimeInterval> { \.fairTimeoutOrDefault }

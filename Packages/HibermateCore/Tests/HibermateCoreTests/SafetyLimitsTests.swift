@@ -83,7 +83,7 @@ struct SafetyLimitsTests {
         let s = try JSONDecoder().decode(UserSettings.self, from: partial)
         #expect(s.maxHold == SafetyLimits.maxHoldDefault)
         #expect(s.batteryThreshold == 30)
-        #expect(s.processWatching == false)
+        #expect(s.watchedTools.isEmpty, "process watching is off by default")
     }
 }
 

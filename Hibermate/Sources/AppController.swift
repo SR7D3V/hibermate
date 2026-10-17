@@ -51,8 +51,9 @@ final class AppController: ObservableObject {
     private var lastHeartbeat: TimeInterval = -.infinity
     private var timer: Timer?
     private var lastConditions = Conditions()
-    private var executing = false
-    private var pendingEffects: [Effect] = []
+    private var activity = ActivityTracker()
+    private let sampler = DarwinProcessSampler()
+    private let gpuTime = IORegistryGPUTime()
 
     init(dryRun: Bool) {
         self.dryRun = dryRun
@@ -61,7 +62,7 @@ final class AppController: ObservableObject {
         self.store = SessionStore(paths: paths)
         self.fanless = ModelCooling.isFanless(LiveSensors().modelIdentifier())
         self.settings = Self.loadSettings(paths: paths)
-        self.integrations = [ClaudeCodeIntegration(paths: paths, dryRun: dryRun)]
+        self.integrations = IntegrationCatalog.all(paths: paths, dryRun: dryRun)
         try? FileManager.default.createDirectory(at: paths.sessionsDirectory, withIntermediateDirectories: true,
                                                  attributes: [.posixPermissions: 0o700])
         appLog.notice("Hibermate starting (dry-run: \(dryRun, privacy: .public), fanless: \(self.fanless, privacy: .public))")
@@ -144,10 +145,14 @@ final class AppController: ObservableObject {
         let now = ProcessInfo.processInfo.systemUptime
         let wall = Date()
 
-        // Sessions.
+        // Sessions from hooks, plus synthetic sessions from activity watching.
         let loaded = store.loadAll()
         store.removeMalformed(loaded, now: wall, olderThan: limits.staleWindow)
-        let evaluated = SessionAggregator.evaluate(loaded.records, now: wall.timeIntervalSince1970,
+        let watched = Set(settings.watchedTools)
+        let rules = ActivityCatalog.rules.filter { watched.contains($0.id.rawValue) }
+        let watchedRecords = rules.isEmpty ? [] : activity.update(
+            samples: sampler.sample(rules: rules, gpu: gpuTime), rules: rules, now: now, wallNow: wall.timeIntervalSince1970)
+        let evaluated = SessionAggregator.evaluate(loaded.records + watchedRecords, now: wall.timeIntervalSince1970,
                                                    liveness: processes, timeouts: SessionTimeouts(limits))
         for s in evaluated { if case .dead = s.verdict { store.remove(s.record.agent, s.record.sessionID) } }
         let live = evaluated.filter { if case .dead = $0.verdict { false } else { true } }
@@ -272,7 +277,9 @@ final class AppController: ObservableObject {
         let wall = Date().timeIntervalSince1970
         s.sessions = sessions.sorted { $0.record.key < $1.record.key }.map { e in
             let r = e.record
-            let agent = integrations.first { $0.id == r.agent }?.displayName ?? r.agent.rawValue
+            let agent = integrations.first { $0.id == r.agent }?.displayName
+                ?? ActivityCatalog.tools.first { $0.id == r.agent }.map { "\($0.displayName) (activity)" }
+                ?? r.agent.rawValue
             let state: String = switch (r.state, e.verdict) {
             case (_, .notHolding(.permissionWaitExpired)): "waiting for you (timed out)"
             case (.working, _): "working"

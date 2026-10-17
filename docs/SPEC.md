@@ -255,3 +255,14 @@ These supersede the matching lines in the verbatim spec above. Details are in [P
 - **Re-arm latch:** after a forced release, there are no new holds until the lid has been reopened, thermal is nominal or fair, and the battery is above threshold + 5% or on AC.
 - **New requirement:** prompts queued in one or more CLIs before the lid closes must all run before the Mac sleeps.
 - **Hook implementation:** a compiled Swift binary behind a one-line `sh` guard, not a script. **XPC:** adds `heartbeat()`.
+
+## A.5 Scope widened to any AI tool (user, 2026-10-17)
+
+"Make sure you treat this project for any LLM being used on the user's machine, not just Claude Code."
+
+This supersedes the spec's "Claude Code (primary), other agents via process watching (off by default)". Hibermate now has:
+- **Hook integrations** for Claude Code, OpenAI Codex CLI, Gemini CLI, Qwen Code, GitHub Copilot CLI, Cursor (editor and CLI), and OpenCode (via a plugin).
+- **Activity watching** (CPU plus per-process GPU time, no root, no network) for local LLM runtimes (Ollama, llama.cpp, MLX, vLLM, LM Studio, LocalAI) and hookless CLI agents.
+- **A generic `hibermate-hook generic …` interface** for anything else.
+
+Each integration is opt-in, with separate consent. Process watching stays off by default. The hardware-safety rules apply identically to every source. Details and research sources are in [AGENTS.md](AGENTS.md).
