@@ -8,8 +8,17 @@ public struct HibermatePaths: Sendable {
         self.supportDirectory = supportDirectory
     }
 
-    public init(home: URL = FileManager.default.homeDirectoryForCurrentUser) {
+    /// Defaults to `$HOME`, to match the `$HOME` path in hook commands, and
+    /// falls back to the account's home directory.
+    public init(home: URL = HibermatePaths.currentHome()) {
         self.supportDirectory = home.appendingPathComponent("Library/Application Support/Hibermate", isDirectory: true)
+    }
+
+    public static func currentHome() -> URL {
+        if let home = ProcessInfo.processInfo.environment["HOME"], home.hasPrefix("/") {
+            return URL(fileURLWithPath: home, isDirectory: true)
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
     }
 
     public var sessionsDirectory: URL { supportDirectory.appendingPathComponent("sessions", isDirectory: true) }

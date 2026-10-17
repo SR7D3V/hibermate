@@ -22,3 +22,4 @@ dist/
 
 # Claude Code local-only settings
 .claude/settings.local.json
+Config/Signing.local.xcconfig

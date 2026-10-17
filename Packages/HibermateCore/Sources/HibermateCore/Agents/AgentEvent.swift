@@ -67,7 +67,7 @@ public struct AgentEvent: Equatable, Sendable {
 }
 
 /// Turns one tool's raw hook invocation (argv plus stdin) into an `AgentEvent`.
-public protocol AgentEventParser {
+public protocol AgentEventParser: Sendable {
     static var agent: AgentID { get }
     /// Returns nil when the input isn't something Hibermate cares about.
     static func parse(arguments: [String], stdin: Data) -> AgentEvent?

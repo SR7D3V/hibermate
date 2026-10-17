@@ -1,0 +1,473 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA0000000000000000000101 /* HibermateCore in Frameworks (app) */ = {isa = PBXBuildFile; productRef = AA0000000000000000000901 /* HibermateCore */; };
+		AA0000000000000000000102 /* HibermateCore in Frameworks (helper) */ = {isa = PBXBuildFile; productRef = AA0000000000000000000902 /* HibermateCore */; };
+		AA0000000000000000000103 /* HibermateCore in Frameworks (hook) */ = {isa = PBXBuildFile; productRef = AA0000000000000000000903 /* HibermateCore */; };
+		AA0000000000000000000104 /* HibermateHelper in Embed Executables */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000202 /* HibermateHelper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		AA0000000000000000000105 /* hibermate-hook in Embed Executables */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000203 /* hibermate-hook */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		AA0000000000000000000106 /* com.sr7d3v.hibermate.helper.plist in Embed LaunchDaemons */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000204 /* com.sr7d3v.hibermate.helper.plist */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AA0000000000000000000301 /* helper dependency */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA0000000000000000000502;
+			remoteInfo = HibermateHelper;
+		};
+		AA0000000000000000000302 /* hook dependency */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA0000000000000000000503;
+			remoteInfo = "hibermate-hook";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AA0000000000000000000401 /* Embed Executables */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				AA0000000000000000000104 /* HibermateHelper in Embed Executables */,
+				AA0000000000000000000105 /* hibermate-hook in Embed Executables */,
+			);
+			name = "Embed Executables";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000402 /* Embed LaunchDaemons */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LaunchDaemons;
+			dstSubfolderSpec = 1;
+			files = (
+				AA0000000000000000000106 /* com.sr7d3v.hibermate.helper.plist in Embed LaunchDaemons */,
+			);
+			name = "Embed LaunchDaemons";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		AA0000000000000000000201 /* Hibermate.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hibermate.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000202 /* HibermateHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = HibermateHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000203 /* hibermate-hook */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "hibermate-hook"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000204 /* com.sr7d3v.hibermate.helper.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = com.sr7d3v.hibermate.helper.plist; sourceTree = "<group>"; };
+		AA0000000000000000000205 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		AA0000000000000000000206 /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
+		AA0000000000000000000207 /* HibermateCore */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = HibermateCore; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		AA0000000000000000000601 /* Hibermate/Sources */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Hibermate/Sources; sourceTree = "<group>"; };
+		AA0000000000000000000602 /* HibermateHelper */ = {isa = PBXFileSystemSynchronizedRootGroup; path = HibermateHelper; sourceTree = "<group>"; };
+		AA0000000000000000000603 /* HibermateHook */ = {isa = PBXFileSystemSynchronizedRootGroup; path = HibermateHook; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AA0000000000000000000411 /* Frameworks (app) */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000101 /* HibermateCore in Frameworks (app) */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000412 /* Frameworks (helper) */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000102 /* HibermateCore in Frameworks (helper) */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000413 /* Frameworks (hook) */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA0000000000000000000103 /* HibermateCore in Frameworks (hook) */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AA0000000000000000000701 = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000601 /* Hibermate/Sources */,
+				AA0000000000000000000602 /* HibermateHelper */,
+				AA0000000000000000000603 /* HibermateHook */,
+				AA0000000000000000000703 /* Config */,
+				AA0000000000000000000704 /* Packages */,
+				AA0000000000000000000702 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000702 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000201 /* Hibermate.app */,
+				AA0000000000000000000202 /* HibermateHelper */,
+				AA0000000000000000000203 /* hibermate-hook */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000703 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000205 /* Base.xcconfig */,
+				AA0000000000000000000206 /* Version.xcconfig */,
+				AA0000000000000000000705 /* LaunchDaemons */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000704 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000207 /* HibermateCore */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000705 /* LaunchDaemons */ = {
+			isa = PBXGroup;
+			children = (
+				AA0000000000000000000204 /* com.sr7d3v.hibermate.helper.plist */,
+			);
+			path = LaunchDaemons;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA0000000000000000000501 /* Hibermate */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000821 /* Build configuration list for PBXNativeTarget "Hibermate" */;
+			buildPhases = (
+				AA0000000000000000000421 /* Sources (app) */,
+				AA0000000000000000000411 /* Frameworks (app) */,
+				AA0000000000000000000431 /* Resources (app) */,
+				AA0000000000000000000401 /* Embed Executables */,
+				AA0000000000000000000402 /* Embed LaunchDaemons */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AA0000000000000000000311 /* PBXTargetDependency helper */,
+				AA0000000000000000000312 /* PBXTargetDependency hook */,
+			);
+			fileSystemSynchronizedGroups = (
+				AA0000000000000000000601 /* Hibermate/Sources */,
+			);
+			name = Hibermate;
+			packageProductDependencies = (
+				AA0000000000000000000901 /* HibermateCore */,
+			);
+			productName = Hibermate;
+			productReference = AA0000000000000000000201 /* Hibermate.app */;
+			productType = "com.apple.product-type.application";
+		};
+		AA0000000000000000000502 /* HibermateHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000822 /* Build configuration list for PBXNativeTarget "HibermateHelper" */;
+			buildPhases = (
+				AA0000000000000000000422 /* Sources (helper) */,
+				AA0000000000000000000412 /* Frameworks (helper) */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AA0000000000000000000602 /* HibermateHelper */,
+			);
+			name = HibermateHelper;
+			packageProductDependencies = (
+				AA0000000000000000000902 /* HibermateCore */,
+			);
+			productName = HibermateHelper;
+			productReference = AA0000000000000000000202 /* HibermateHelper */;
+			productType = "com.apple.product-type.tool";
+		};
+		AA0000000000000000000503 /* hibermate-hook */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000823 /* Build configuration list for PBXNativeTarget "hibermate-hook" */;
+			buildPhases = (
+				AA0000000000000000000423 /* Sources (hook) */,
+				AA0000000000000000000413 /* Frameworks (hook) */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AA0000000000000000000603 /* HibermateHook */,
+			);
+			name = "hibermate-hook";
+			packageProductDependencies = (
+				AA0000000000000000000903 /* HibermateCore */,
+			);
+			productName = "hibermate-hook";
+			productReference = AA0000000000000000000203 /* hibermate-hook */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = AA0000000000000000000820 /* Build configuration list for PBXProject "Hibermate" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AA0000000000000000000701;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AA0000000000000000000900 /* XCLocalSwiftPackageReference "Packages/HibermateCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = AA0000000000000000000702 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AA0000000000000000000501 /* Hibermate */,
+				AA0000000000000000000502 /* HibermateHelper */,
+				AA0000000000000000000503 /* hibermate-hook */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AA0000000000000000000431 /* Resources (app) */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AA0000000000000000000421 /* Sources (app) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000422 /* Sources (helper) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000423 /* Sources (hook) */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AA0000000000000000000311 /* PBXTargetDependency helper */ = {
+			isa = PBXTargetDependency;
+			target = AA0000000000000000000502 /* HibermateHelper */;
+			targetProxy = AA0000000000000000000301 /* helper dependency */;
+		};
+		AA0000000000000000000312 /* PBXTargetDependency hook */ = {
+			isa = PBXTargetDependency;
+			target = AA0000000000000000000503 /* hibermate-hook */;
+			targetProxy = AA0000000000000000000302 /* hook dependency */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		AA0000000000000000000801 /* Debug (project) */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA0000000000000000000205 /* Base.xcconfig */;
+			buildSettings = {
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AA0000000000000000000802 /* Release (project) */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA0000000000000000000205 /* Base.xcconfig */;
+			buildSettings = {
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ONLY_ACTIVE_ARCH = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		AA0000000000000000000811 /* Debug (app) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Hibermate;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Swarnim. Licensed under GPL-3.0.";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.sr7d3v.hibermate;
+				PRODUCT_NAME = Hibermate;
+			};
+			name = Debug;
+		};
+		AA0000000000000000000812 /* Release (app) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Hibermate;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Swarnim. Licensed under GPL-3.0.";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.sr7d3v.hibermate;
+				PRODUCT_NAME = Hibermate;
+			};
+			name = Release;
+		};
+		AA0000000000000000000813 /* Debug (helper) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sr7d3v.hibermate.helper;
+				PRODUCT_NAME = HibermateHelper;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		AA0000000000000000000814 /* Release (helper) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sr7d3v.hibermate.helper;
+				PRODUCT_NAME = HibermateHelper;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		AA0000000000000000000815 /* Debug (hook) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sr7d3v.hibermate.hook;
+				PRODUCT_NAME = "hibermate-hook";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		AA0000000000000000000816 /* Release (hook) */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sr7d3v.hibermate.hook;
+				PRODUCT_NAME = "hibermate-hook";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AA0000000000000000000820 /* Build configuration list for PBXProject "Hibermate" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000801 /* Debug (project) */,
+				AA0000000000000000000802 /* Release (project) */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000821 /* Build configuration list for PBXNativeTarget "Hibermate" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000811 /* Debug (app) */,
+				AA0000000000000000000812 /* Release (app) */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000822 /* Build configuration list for PBXNativeTarget "HibermateHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000813 /* Debug (helper) */,
+				AA0000000000000000000814 /* Release (helper) */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000823 /* Build configuration list for PBXNativeTarget "hibermate-hook" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000815 /* Debug (hook) */,
+				AA0000000000000000000816 /* Release (hook) */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AA0000000000000000000900 /* XCLocalSwiftPackageReference "Packages/HibermateCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/HibermateCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA0000000000000000000901 /* HibermateCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HibermateCore;
+		};
+		AA0000000000000000000902 /* HibermateCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HibermateCore;
+		};
+		AA0000000000000000000903 /* HibermateCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HibermateCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = AA0000000000000000000001 /* Project object */;
+}
