@@ -68,7 +68,9 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button("Open Login Items Settings") { HelperRegistration.openLoginItemsSettings() }
         case .helperUnreachable:
-            Text("The helper is installed but not responding yet.")
+            Text("The helper is installed but not responding. This can happen after updating an unsigned build. Reinstalling it fixes this; macOS may ask you to approve it in Login Items again.")
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Reinstall helper") { controller.reinstallHelper() }
         case .ready:
             Label(controller.dryRun ? "Dry run: no helper needed" : "Helper installed and approved", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)

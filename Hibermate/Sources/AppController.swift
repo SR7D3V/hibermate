@@ -14,10 +14,15 @@ struct MenuSnapshot: Equatable {
 
     var icon: Icon = .idle
     var headline = "Starting…"
+    /// One plain sentence explaining the headline, for the main window.
+    var explanation = ""
     var sessions: [SessionRow] = []
     var thermal = ""
     var battery = ""
     var timeRemaining: String?
+    var lid = ""
+    var display = ""
+    var otherApps = ""
     var warnings: [String] = []
     var isActive = false
     var isPaused = false
@@ -73,6 +78,17 @@ final class AppController: ObservableObject {
 
     func start() {
         refreshSetup()
+        // After an app update, re-register a helper whose binary changed.
+        // Otherwise launchd refuses to start it (cdhash launch constraint).
+        if !dryRun, AppLocation.isInApplications,
+           HelperRegistration.status == .enabled || HelperRegistration.status == .requiresApproval,
+           HelperRegistration.helperChangedSinceRegistration {
+            Task { @MainActor in
+                await HelperRegistration.reregister()
+                self.refreshSetup()
+                self.pingHelper()
+            }
+        }
         // Reconcile on launch: if a previous run crashed mid-hold, the helper
         // restores (and does nothing if no hold is recorded).
         if setup == .ready || dryRun { power.endHold { _ in } }
@@ -119,6 +135,16 @@ final class AppController: ObservableObject {
         }
         refreshSetup()
         pingHelper()
+    }
+
+    /// "Reinstall helper" in setup: for a helper that's registered but not responding.
+    func reinstallHelper() {
+        guard !dryRun, AppLocation.isInApplications else { return }
+        Task { @MainActor in
+            await HelperRegistration.reregister()
+            self.refreshSetup()
+            self.pingHelper()
+        }
     }
 
     private func pingHelper() {
@@ -313,6 +339,21 @@ final class AppController: ObservableObject {
         case .battery(let p): "Battery: \(p)%"
         case .unknown: "Battery: unknown"
         }
+        s.lid = switch c.lidClosed {
+        case true?: "Lid: closed"
+        case false?: "Lid: open"
+        case nil: "Lid: unknown (no lid sensor)"
+        }
+        s.display = switch c.externalDisplayConnected {
+        case true?: "External display: connected (the Mac is never put to sleep)"
+        case false?: "External display: none"
+        case nil: "External display: unknown"
+        }
+        s.otherApps = switch c.otherSleepAssertions {
+        case true?: "Other apps are preventing sleep (Hibermate won't force sleep)"
+        case false?: "No other apps are preventing sleep"
+        case nil: "Couldn't check other apps' sleep assertions"
+        }
         if let left = engine.timeRemaining(now: now, conditions: c, limits: limits) {
             s.timeRemaining = "Max hold ends in \(Self.format(left))"
         }
@@ -363,6 +404,17 @@ final class AppController: ObservableObject {
                     s.icon = .idle; s.headline = "No agents working"
                 }
             }
+        }
+        s.explanation = switch (setup, engine.phase) {
+        case (.wrongLocation, _): "Hibermate must run from the Applications folder before it can keep your Mac awake."
+        case (.helperNotRegistered, _), (.helperNeedsApproval, _), (.helperUnreachable, _):
+            "Until setup is finished, your Mac sleeps normally."
+        case (.ready, .holding): "An AI tool is working. You can close the lid; the display turns off and the work continues."
+        case (.ready, .grace): "All work finished. Waiting a little in case more arrives, then normal sleep returns."
+        case (.ready, .idle):
+            engine.latchedReason != nil
+                ? "Hibermate released the Mac to protect it. Open the lid to re-arm it."
+                : "Your Mac sleeps normally. Hibermate starts holding as soon as an enabled AI tool starts working."
         }
         if dryRun { s.headline = "[Dry run] " + s.headline }
         return s

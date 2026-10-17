@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import HibermateCore
 import IOKit.pwr_mgt
@@ -123,6 +124,35 @@ enum HelperRegistration {
     /// Only call this from /Applications (see `AppLocation`).
     static func register() throws {
         try service.register()
+        UserDefaults.standard.set(bundledHelperFingerprint, forKey: fingerprintKey)
+    }
+
+    // An ad-hoc signed helper is registered with a launch constraint that pins
+    // its exact cdhash. After an app update, the new helper binary has a
+    // different cdhash and launchd refuses to start it (EX_CONFIG). Seen on
+    // real hardware, 2026-10-17. Re-registering records the new hash. With a
+    // Developer ID, the constraint pins the Team ID and updates keep working.
+    private static let fingerprintKey = "registeredHelperFingerprint"
+
+    static var bundledHelperFingerprint: String? {
+        let url = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/HibermateHelper")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static var helperChangedSinceRegistration: Bool {
+        UserDefaults.standard.string(forKey: fingerprintKey) != bundledHelperFingerprint
+    }
+
+    /// Unregisters and registers again. macOS may ask for Login Items approval again.
+    static func reregister() async {
+        appLog.notice("Re-registering the helper (the bundled helper changed or isn't responding)")
+        do { try await service.unregister() } catch {
+            appLog.error("Helper unregister failed: \(error.localizedDescription, privacy: .public)")
+        }
+        do { try register() } catch {
+            appLog.error("Helper register failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     static func unregister() async throws {

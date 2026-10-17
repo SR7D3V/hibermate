@@ -14,6 +14,11 @@ struct HibermateApp: App {
         }
         .menuBarExtraStyle(.menu)
 
+        Window("Hibermate", id: "main") {
+            MainWindowView(controller: delegate.controller)
+        }
+        .defaultSize(width: 520, height: 620)
+
         Window("Hibermate Settings", id: "settings") {
             SettingsView(controller: delegate.controller)
         }
@@ -88,6 +93,7 @@ struct MenuContent: View {
     var body: some View {
         let s = controller.snapshot
         Text(s.headline)
+        Button("Open Hibermate…") { show("main") }
         if controller.setup != .ready {
             Button("Finish setup…") { show("onboarding") }
         }
