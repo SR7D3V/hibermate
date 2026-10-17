@@ -39,6 +39,8 @@ For each tool: enable it in onboarding, run one real prompt, check that the menu
 - [ ] Activity watching: Ollama (GGUF and MLX models), llama.cpp, LM Studio (record real process names), MLX. A loaded but idle model must **not** hold; generating must hold.
 
 ## 3. Lid closed during a real agent run
+Fastest visible check, with no tool settings changed: `scripts/lid-test.sh run --no-hold`, then `scripts/lid-test.sh run --hold`, running `scripts/lid-test.sh report` after each. The Mac writes a timestamp every 5 s, so gaps show exactly when it slept.
+
 - [ ] On **battery**: start a long task and close the lid. The work continues (check timestamps afterwards), and the Mac sleeps after the work plus the grace period.
 - [ ] On **AC**: the same.
 - [ ] With an **external display** (clamshell): the Mac stays awake as a desktop; Hibermate never forces sleep.
