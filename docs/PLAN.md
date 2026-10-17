@@ -96,6 +96,8 @@ For each event, Hibermate adds one matcher group with `"matcher": ""` and this h
   - `Stop` with background tasks keeps holding (BACKGROUND, above).
   - Hooks give no way to read the queue directly. The exact `Stop`/`UserPromptSubmit` timing between queued prompts gets measured on a real Claude Code session before release (manual checklist), and the 30 s floor gets raised if it falls short.
   - Tests cover: `Stop` followed by `UserPromptSubmit` within grace → no restore and no helper churn; three queued prompts across two sessions → one continuous hold; the queue drained → grace → sleep.
+- **Long tool calls:** `PreToolUse`/`PostToolUse` track the `tool_use_id`s in flight. While a tool is running (for example a 30-minute build), the stale window stretches to 60 min, so a long command isn't mistaken for a lost `Stop`. Max hold still bounds it. Parallel hook invocations are serialized with a short, bounded `flock`.
+- **Known limitation (settings merge):** if the user had an empty array for an event Hibermate registers (e.g. `"Stop": []`), uninstall removes that empty array. Both mean "no hooks", and the timestamped backup keeps the original bytes. Everything else round-trips byte for byte.
 - **Process watching** (off by default) feeds synthetic sessions into the same aggregator. A watched process counts as working if it exists and its CPU over the last 30 s is above 2%.
 
 ## 4. State machine

@@ -39,6 +39,10 @@ The full spec, kept verbatim, is in [docs/SPEC.md](docs/SPEC.md). Its Appendix A
 - **Agent detection:** Claude Code hooks write `~/Library/Application Support/Hibermate/sessions/<session_id>.json`. Hook entries are merged into `~/.claude/settings.json`: back up first, tag our entries, validate, write atomically, refuse to edit a corrupt file. Optional process watching (off by default).
 - The helper is registered only when the app runs from `/Applications`, never when translocated. It never holds before the user approves it in Login Items.
 
+## Building and testing
+- `scripts/test.sh` runs the HibermateCore tests (Swift Testing). **Always build outside the repo.** The repo is in iCloud-synced `~/Documents`, so build output gets file-provider xattrs, `codesign` fails, and iCloud uploads the artifacts. Scripts use `~/Library/Caches/hibermate-build`. Xcode's DerivedData already lives in `~/Library`.
+- All logic lives in `Packages/HibermateCore` (pure, with fakes). Real IOKit, ServiceManagement, and XPC code goes in the app and helper targets.
+
 ## Distribution
 `scripts/build-dmg.sh` (xcodebuild archive/export + hdiutil) → `Hibermate-<version>.dmg` + SHA-256. Signing and notarization are switched on by env vars; credentials are never committed. A GitHub Actions workflow builds on `v*` tags and attaches the DMG to a **draft** release. Versions are SemVer, set in one place. Sparkle and the Homebrew cask are roadmap items only.
 
@@ -49,5 +53,5 @@ Bundle IDs `com.sr7d3v.hibermate` and `.helper`; GPL-3.0; unsigned (ad-hoc) rele
 - [x] Step 0: spec saved verbatim, with verification notes and decisions in SPEC Appendix A
 - [x] Plan approved: [docs/PLAN.md](docs/PLAN.md)
 - [x] Housekeeping: LICENSE (GPL-3.0), .gitignore, CHANGELOG.md, .claude/settings.json
-- [ ] HibermateCore package (state machine, safety policy, sessions, settings merge, helper core) + unit tests
+- [x] HibermateCore package (state machine, safety policy, sessions, hook runner, settings merge, helper core): 119 tests passing
 - [ ] Hook binary · helper · app UI · Xcode project · build-dmg.sh · release workflow · uninstall.sh · README · manual checklist
