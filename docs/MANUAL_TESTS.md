@@ -7,7 +7,12 @@
   - Stop → 60 s grace → restored to the original (0).
   - `kill -9` app mid-hold → helper restored in 1 s (XPC invalidation).
   - Bug found: the helper's re-read after `pmset` lagged, so the first restore was logged as failed and fixed by the 10 s retry. The read now waits up to 1 s.
-  - Not yet tested: clean user account, lid closed, battery, thermal, reboot mid-hold.
+  - Helper re-registration after an update: the ad-hoc helper is pinned to its cdhash (LWCR), so the updated helper failed with EX_CONFIG. Fixed with automatic re-registration, which needs Login Items approval again.
+  - **Lid closed on battery, `scripts/lid-test.sh`:**
+    - Control (`--no-hold`): Clamshell Sleep 18:24:07 → wake 18:29:07, a 5-minute gap in the samples.
+    - With Hibermate (`--hold`): no gap during the 3-minute run with the lid closed. Released after 60 s of grace, then `sleepNow` → macOS "Software Sleep pid=<helper>" 5 s later. PASS.
+    - Found and fixed along the way: powerd's "Prevent sleep while display is on" was counted as a blocking assertion; macOS doesn't sleep by itself after a restore with the lid closed (→ SPEC A.6).
+  - Not yet tested: clean user account, a real Claude Code session with the integration, AC with an external display, thermal, reboot mid-hold.
 
 Unit tests cover the logic with fakes. This checklist covers what only a real Mac can show. Record the date, macOS version, and Mac model (`sysctl -n hw.model`) for every run.
 
