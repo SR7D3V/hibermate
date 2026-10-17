@@ -34,7 +34,14 @@ final class SystemSleepControl: SleepDisabledControl {
         process.standardError = FileHandle.nullDevice
         try process.run()
         process.waitUntilExit()
-        guard process.terminationStatus == 0, try read() == disabled else {
+        // The IORegistry can lag slightly behind pmset (seen on real hardware:
+        // an immediate read still showed the old value). Wait up to 1 s.
+        var applied = false
+        for _ in 0..<20 where process.terminationStatus == 0 {
+            if try read() == disabled { applied = true; break }
+            usleep(50_000)
+        }
+        guard process.terminationStatus == 0, applied else {
             helperLog.error("pmset disablesleep \(disabled ? 1 : 0, privacy: .public) failed (status \(process.terminationStatus, privacy: .public))")
             throw HelperError.settingFailed
         }

@@ -1,5 +1,14 @@
 # Manual test checklist (real hardware)
 
+## Results log
+- **2026-10-17, Mac15,6 (14-inch M3 Pro), dev account, ad-hoc build 0.1.0:**
+  - The helper registered via SMAppService and was approved in Login Items.
+  - Hook → hold within ~1 s → `SleepDisabled 1`.
+  - Stop → 60 s grace → restored to the original (0).
+  - `kill -9` app mid-hold → helper restored in 1 s (XPC invalidation).
+  - Bug found: the helper's re-read after `pmset` lagged, so the first restore was logged as failed and fixed by the 10 s retry. The read now waits up to 1 s.
+  - Not yet tested: clean user account, lid closed, battery, thermal, reboot mid-hold.
+
 Unit tests cover the logic with fakes. This checklist covers what only a real Mac can show. Record the date, macOS version, and Mac model (`sysctl -n hw.model`) for every run.
 
 Before and after each section, record:

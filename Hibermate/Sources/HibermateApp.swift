@@ -10,7 +10,7 @@ struct HibermateApp: App {
         MenuBarExtra {
             MenuContent(controller: delegate.controller)
         } label: {
-            MenuBarIcon(icon: delegate.controller.snapshot.icon)
+            MenuBarLabel(controller: delegate.controller)
         }
         .menuBarExtraStyle(.menu)
 
@@ -41,6 +41,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             sender.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+}
+
+/// The menu bar label. It also opens the setup window on first launch, and
+/// on any launch where setup is incomplete.
+struct MenuBarLabel: View {
+    @ObservedObject var controller: AppController
+    @Environment(\.openWindow) private var openWindow
+    @AppStorage("onboardingShown") private var onboardingShown = false
+
+    var body: some View {
+        MenuBarIcon(icon: controller.snapshot.icon)
+            .task {
+                // Give the first tick a moment to work out the setup state.
+                try? await Task.sleep(for: .seconds(1))
+                if !onboardingShown || controller.setup != .ready {
+                    onboardingShown = true
+                    openWindow(id: "onboarding")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            }
     }
 }
 

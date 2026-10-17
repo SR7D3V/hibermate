@@ -22,6 +22,7 @@ struct OnboardingView: View {
                     Text("• Never holds longer than the maximum (default 4 h, hard limit 12 h).")
                     Text("• If Hibermate crashes, normal sleep returns within 2 minutes.")
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -41,6 +42,7 @@ struct OnboardingView: View {
                     }
                     Text("Local models (Ollama, llama.cpp, MLX, LM Studio…) and tools without hooks can be watched by activity in Settings.")
                         .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     if let integrationError {
                         Text(integrationError).foregroundStyle(.red).font(.caption)
                     }
