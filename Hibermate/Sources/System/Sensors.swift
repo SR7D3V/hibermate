@@ -14,6 +14,8 @@ protocol SystemSensing {
     func lidClosed() -> Bool?
     func externalDisplayConnected() -> Bool?
     func otherSleepAssertions(excluding pids: Set<pid_t>) -> Bool?
+    /// "process: type "name"" for each blocking assertion, for logs.
+    func describeOtherSleepAssertions(excluding pids: Set<pid_t>) -> [String]
     func batteryNeedsService() -> Bool
     func modelIdentifier() -> String?
 }
@@ -86,9 +88,18 @@ struct LiveSensors: SystemSensing {
     /// Any other process holding an assertion that prevents system sleep. Examples:
     /// a download, a Time Machine backup, or the user's own `caffeinate`.
     func otherSleepAssertions(excluding pids: Set<pid_t>) -> Bool? {
+        blockingAssertions(excluding: pids).map { !$0.isEmpty }
+    }
+
+    func describeOtherSleepAssertions(excluding pids: Set<pid_t>) -> [String] {
+        blockingAssertions(excluding: pids) ?? ["(assertions unreadable)"]
+    }
+
+    private func blockingAssertions(excluding pids: Set<pid_t>) -> [String]? {
         var byProcess: Unmanaged<CFDictionary>?
         guard IOPMCopyAssertionsByProcess(&byProcess) == kIOReturnSuccess,
               let dict = byProcess?.takeRetainedValue() as? [NSNumber: [[String: Any]]] else { return nil }
+        var found: [String] = []
         let preventing: Set<String> = [kIOPMAssertionTypePreventSystemSleep, kIOPMAssertionTypePreventUserIdleSystemSleep,
                                        kIOPMAssertionTypeNoIdleSleep]
         for (pid, assertions) in dict where !pids.contains(pid.int32Value) {
@@ -101,10 +112,13 @@ struct LiveSensors: SystemSensing {
                     continue
                 }
                 // Level 255 (kIOPMAssertionLevelOn) means the assertion is active.
-                if (a[kIOPMAssertionLevelKey] as? Int ?? 255) == Int(kIOPMAssertionLevelOn) { return true }
+                if (a[kIOPMAssertionLevelKey] as? Int ?? 255) == Int(kIOPMAssertionLevelOn) {
+                    let owner = DarwinProcessTable().entry(for: pid.int32Value)?.name ?? "pid \(pid)"
+                    found.append("\(owner): \(type) \"\(a[kIOPMAssertionNameKey] as? String ?? "")\"")
+                }
             }
         }
-        return false
+        return found
     }
 
     func modelIdentifier() -> String? {

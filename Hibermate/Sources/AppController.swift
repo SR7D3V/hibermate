@@ -299,6 +299,10 @@ final class AppController: ObservableObject {
                 }
             case .endHold(let reason):
                 appLog.notice("Hold ended: \(reason.rawValue, privacy: .public)")
+                let sleeping = queue.contains { if case .sleepNow = $0 { true } else { false } }
+                if !sleeping, ![.userReleased, .paused, .quitting, .helperUnavailable].contains(reason) {
+                    logWhyNotSleeping()
+                }
                 power.endHold { _ in next() }
             case .sleepNow(let reason):
                 appLog.notice("Sleeping the Mac: \(reason.rawValue, privacy: .public)")
@@ -311,6 +315,16 @@ final class AppController: ObservableObject {
             }
         }
         next()
+    }
+
+    /// Invariant 3 kept the Mac awake after a release: record which condition did.
+    private func logWhyNotSleeping() {
+        let c = lastConditions
+        let blockers = c.otherSleepAssertions == true ? sensors.describeOtherSleepAssertions(excluding: [getpid()]) : []
+        let summary = "lid closed: \(String(describing: c.lidClosed)), external display: "
+            + "\(String(describing: c.externalDisplayConnected)), other sleep assertions: "
+            + "\(String(describing: c.otherSleepAssertions)) \(blockers.joined(separator: "; "))"
+        appLog.notice("Not sleeping the Mac (\(summary, privacy: .public))")
     }
 
     private func logSafetyRelease(_ reason: ReleaseReason, slept: Bool) {
