@@ -68,9 +68,12 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Button("Open Login Items Settings") { HelperRegistration.openLoginItemsSettings() }
         case .helperUnreachable:
-            Text("The helper is installed but not responding. This can happen after updating an unsigned build. Reinstalling it fixes this; macOS may ask you to approve it in Login Items again.")
+            Text("The helper is installed but not responding. After an update, macOS needs you to approve it again: in Login Items, turn Hibermate on (or off and back on). If that doesn't help, reinstall it.")
                 .fixedSize(horizontal: false, vertical: true)
-            Button("Reinstall helper") { controller.reinstallHelper() }
+            HStack {
+                Button("Open Login Items Settings") { HelperRegistration.openLoginItemsSettings() }
+                Button("Reinstall helper") { controller.reinstallHelper() }
+            }
         case .ready:
             Label(controller.dryRun ? "Dry run: no helper needed" : "Helper installed and approved", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)

@@ -143,6 +143,11 @@ enum HelperRegistration {
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    /// The running helper answered, so this binary is the approved one.
+    static func recordCurrentFingerprint() {
+        UserDefaults.standard.set(bundledHelperFingerprint, forKey: fingerprintKey)
+    }
+
     static var helperChangedSinceRegistration: Bool {
         UserDefaults.standard.string(forKey: fingerprintKey) != bundledHelperFingerprint
     }
@@ -154,6 +159,10 @@ enum HelperRegistration {
             appLog.error("Helper unregister failed: \(error.localizedDescription, privacy: .public)")
         }
         do { try register() } catch {
+            // Usually "Operation not permitted": registered, but waiting for the
+            // user's approval in Login Items. Record the fingerprint anyway, so the
+            // next launch doesn't unregister again and clear the pending approval.
+            UserDefaults.standard.set(bundledHelperFingerprint, forKey: fingerprintKey)
             appLog.error("Helper register failed: \(error.localizedDescription, privacy: .public)")
         }
     }

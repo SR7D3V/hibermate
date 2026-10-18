@@ -56,6 +56,7 @@ final class AppController: ObservableObject {
     private var lastHeartbeat: TimeInterval = -.infinity
     private var timer: Timer?
     private var appNapOptOut: NSObjectProtocol?
+    private var triedReregister = false
     private var lastConditions = Conditions()
     private var activity = ActivityTracker()
     private let sampler = DarwinProcessSampler()
@@ -79,17 +80,9 @@ final class AppController: ObservableObject {
 
     func start() {
         refreshSetup()
-        // After an app update, re-register a helper whose binary changed.
-        // Otherwise launchd refuses to start it (cdhash launch constraint).
-        if !dryRun, AppLocation.isInApplications,
-           HelperRegistration.status == .enabled || HelperRegistration.status == .requiresApproval,
-           HelperRegistration.helperChangedSinceRegistration {
-            Task { @MainActor in
-                await HelperRegistration.reregister()
-                self.refreshSetup()
-                self.pingHelper()
-            }
-        }
+        // Re-registering after an update happens in pingHelper(), and only if
+        // the helper doesn't respond, so an approval that's still valid is
+        // never thrown away.
         // Reconcile on launch: if a previous run crashed mid-hold, the helper
         // restores (and does nothing if no hold is recorded).
         if setup == .ready || dryRun { power.endHold { _ in } }
@@ -167,6 +160,18 @@ final class AppController: ObservableObject {
             guard let self else { return }
             self.helperReachable = reachable
             self.lastHeartbeat = ProcessInfo.processInfo.systemUptime
+            if reachable {
+                HelperRegistration.recordCurrentFingerprint()
+            } else if !self.dryRun, !self.triedReregister, AppLocation.isInApplications,
+                      HelperRegistration.helperChangedSinceRegistration {
+                // After an update, launchd refuses to start a helper whose cdhash
+                // changed (launch constraint). Re-register once per launch.
+                self.triedReregister = true
+                Task { @MainActor in
+                    await HelperRegistration.reregister()
+                    self.refreshSetup()
+                }
+            }
             // The helper restored on its own (e.g. a dropped connection) while
             // we're still holding: ask again.
             if reachable, !holdActive, self.engine.phase != .idle {
