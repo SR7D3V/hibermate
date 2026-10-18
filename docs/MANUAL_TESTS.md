@@ -14,6 +14,12 @@
     - Found and fixed along the way: powerd's "Prevent sleep while display is on" was counted as a blocking assertion; macOS doesn't sleep by itself after a restore with the lid closed (→ SPEC A.6).
   - **Real Claude Code session with the integration (VS Code extension), lid closed:** the hook started the hold at 19:01:11 (✅), but the **helper's dead-man switch released it at 19:03:11**. With the lid closed, App Nap throttled the app's timers, so heartbeats stopped. The Mac stayed awake only because macOS doesn't re-check lid sleep after a restore. Fixed by opting out of App Nap (`beginActivity(.userInitiatedAllowingIdleSystemSleep)`); needs a re-test.
   - **Re-test after the App Nap fix (2026-10-18), real Claude Code session, lid closed, battery:** hold 09:10:09 → no early release, samples every ~10 s with no gap → grace expired 09:14:27 → `sleepNow` → macOS Software Sleep (helper pid) 09:14:32 → woke on lid open 09:15:26. **PASS.**
+  - **Round 1, automated with stand-in agents and the real hook (2026-10-18):**
+    - Hooks with Hibermate's files absent: exit 0, no output, 12 ms, no files created. PASS.
+    - `kill -9` agent: "dead: processExited" within one 3 s tick, session file removed. PASS.
+    - Unanswered permission prompt: waiting → "permissionWaitExpired" after exactly 5 min. PASS.
+    - Lost Stop (agent alive, silent): "dead: staleWorking" after exactly 15 min, then released after grace. PASS.
+    - A session with background tasks stopped holding after the 15 min stale window ("backgroundStale"). PASS.
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
