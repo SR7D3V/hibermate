@@ -9,6 +9,9 @@
 #                                                 Expect a gap while the lid is closed.
 #   scripts/lid-test.sh run --hold [minutes]      Hibermate holds via its generic integration.
 #                                                 Expect no gap, then sleep about 1 min after the work ends.
+#   CRASH_APP_AFTER=60 scripts/lid-test.sh run --hold
+#                                                 Crash test: kill -9 Hibermate 60 s in. The helper should
+#                                                 restore the sleep setting and put the lid-closed Mac to sleep.
 #   scripts/lid-test.sh report                    Run after reopening the lid: gaps, macOS sleep/wake
 #                                                 events, and Hibermate's log for the last run.
 #
@@ -42,6 +45,11 @@ run() {
     fi
     echo "Writing the time every 5 s for $MINUTES min. Close the lid now."
     echo "Reopen it about $((MINUTES + 2)) min from now, then run: $0 report"
+    if [ -n "${CRASH_APP_AFTER:-}" ]; then
+        echo "Crash test: Hibermate will be killed with kill -9 in $CRASH_APP_AFTER s."
+        echo "# crash_after=$CRASH_APP_AFTER" >> "$LOG"
+        ( sleep "$CRASH_APP_AFTER"; pkill -9 -x Hibermate && echo "# crashed=$(date +%s)" >> "$LOG" ) &
+    fi
 
     LAST_BEAT=$START
     while [ "$(date +%s)" -lt "$END" ]; do
@@ -71,6 +79,7 @@ report() {
     START=$(echo "$HEADER" | sed -n 's/.*start=\([0-9]*\).*/\1/p')
     END=$(echo "$HEADER" | sed -n 's/.*end=\([0-9]*\).*/\1/p')
     FINISHED=$(sed -n 's/^# finished=//p' "$LOG")
+    CRASHED=$(sed -n 's/^# crashed=//p' "$LOG")
     fmt() { date -r "$1" +%T; }
 
     echo "== Run: $MODE, planned $(fmt "$START") → $(fmt "$END")"
@@ -85,6 +94,7 @@ report() {
         echo "   (not finished; still running or interrupted)"
     fi
 
+    [ -n "$CRASHED" ] && echo "   Hibermate was killed (kill -9) at $(fmt "$CRASHED") for the crash test"
     echo
     echo "== Gaps in the Mac's own timestamps (over 15 s = the Mac was asleep)"
     # The finish time counts as a sample too (older logs lack the final timestamp).
