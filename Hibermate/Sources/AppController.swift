@@ -57,6 +57,7 @@ final class AppController: ObservableObject {
     private var timer: Timer?
     private var appNapOptOut: NSObjectProtocol?
     private var triedReregister = false
+    private var lastSessionStatus: [String: String] = [:]
     private var lastConditions = Conditions()
     private var activity = ActivityTracker()
     private let sampler = DarwinProcessSampler()
@@ -198,6 +199,7 @@ final class AppController: ObservableObject {
                                                    liveness: processes, timeouts: SessionTimeouts(limits))
         for s in evaluated { if case .dead = s.verdict { store.remove(s.record.agent, s.record.sessionID) } }
         let live = evaluated.filter { if case .dead = $0.verdict { false } else { true } }
+        logSessionChanges(evaluated)
 
         // Heartbeat: every 30 s while a hold is active, every 60 s otherwise.
         if now - lastHeartbeat >= (engine.isActive ? 30 : 60) { pingHelper() }
@@ -214,6 +216,21 @@ final class AppController: ObservableObject {
             power: power,
             lowPowerMode: sensors.lowPowerMode()
         )
+        // Record state changes that matter for safety, so real-hardware runs can be reviewed.
+        if c.thermal != lastConditions.thermal {
+            appLog.notice("Thermal state: \(String(describing: c.thermal), privacy: .public) (hold active: \(self.engine.isActive, privacy: .public))")
+        }
+        if c.lidClosed != lastConditions.lidClosed {
+            appLog.notice("Lid closed: \(String(describing: c.lidClosed), privacy: .public)")
+        }
+        if c.power != lastConditions.power, case .battery = c.power, case .battery = lastConditions.power {
+            // Battery percentage changes are too frequent to log.
+        } else if c.power != lastConditions.power {
+            appLog.notice("Power: \(String(describing: c.power), privacy: .public)")
+        }
+        if c.lowPowerMode != lastConditions.lowPowerMode {
+            appLog.notice("Low Power Mode: \(c.lowPowerMode, privacy: .public)")
+        }
         lastConditions = c
         run(engine.update(now: now, conditions: c, limits: limits))
         snapshot = makeSnapshot(now: now, conditions: c, sessions: live)
@@ -335,6 +352,28 @@ final class AppController: ObservableObject {
             }
         }
         next()
+    }
+
+    /// Logs each session's status when it changes, e.g. "holding" →
+    /// "permission wait expired" or "dead: process exited". Session IDs and
+    /// states only; never prompts or paths.
+    private func logSessionChanges(_ sessions: [EvaluatedSession]) {
+        var current: [String: String] = [:]
+        for s in sessions {
+            let status: String = switch s.verdict {
+            case .holding: "holding (\(s.record.state.rawValue))"
+            case .notHolding(let why): "not holding: \(why.rawValue)"
+            case .dead(let why): "dead: \(why.rawValue)"
+            }
+            current[s.record.key] = status
+            if lastSessionStatus[s.record.key] != status {
+                appLog.notice("Session \(s.record.key, privacy: .public): \(status, privacy: .public)")
+            }
+        }
+        for key in lastSessionStatus.keys where current[key] == nil {
+            appLog.notice("Session \(key, privacy: .public): ended")
+        }
+        lastSessionStatus = current.filter { !$0.value.hasPrefix("dead") }
     }
 
     /// Invariant 3 kept the Mac awake after a release: record which condition did.
