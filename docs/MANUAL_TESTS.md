@@ -13,6 +13,7 @@
     - With Hibermate (`--hold`): no gap during the 3-minute run with the lid closed. Released after 60 s of grace, then `sleepNow` → macOS "Software Sleep pid=<helper>" 5 s later. PASS.
     - Found and fixed along the way: powerd's "Prevent sleep while display is on" was counted as a blocking assertion; macOS doesn't sleep by itself after a restore with the lid closed (→ SPEC A.6).
   - **Real Claude Code session with the integration (VS Code extension), lid closed:** the hook started the hold at 19:01:11 (✅), but the **helper's dead-man switch released it at 19:03:11**. With the lid closed, App Nap throttled the app's timers, so heartbeats stopped. The Mac stayed awake only because macOS doesn't re-check lid sleep after a restore. Fixed by opting out of App Nap (`beginActivity(.userInitiatedAllowingIdleSystemSleep)`); needs a re-test.
+  - **Re-test after the App Nap fix (2026-10-18), real Claude Code session, lid closed, battery:** hold 09:10:09 → no early release, samples every ~10 s with no gap → grace expired 09:14:27 → `sleepNow` → macOS Software Sleep (helper pid) 09:14:32 → woke on lid open 09:15:26. **PASS.**
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
