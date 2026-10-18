@@ -161,7 +161,9 @@ final class AppController: ObservableObject {
             helperReachable = false
             return
         }
-        power.heartbeat { [weak self] reachable, holdActive in
+        // Unknown counts as connected, so the helper never sleeps the Mac on a guess.
+        let external = sensors.externalDisplayConnected() ?? true
+        power.heartbeat(externalDisplayConnected: external) { [weak self] reachable, holdActive in
             guard let self else { return }
             self.helperReachable = reachable
             self.lastHeartbeat = ProcessInfo.processInfo.systemUptime
@@ -304,6 +306,9 @@ final class AppController: ObservableObject {
                         self.helperReachable = false
                         self.run(self.engine.handle(.helperFailed, now: ProcessInfo.processInfo.systemUptime,
                                                     conditions: self.lastConditions))
+                    } else {
+                        // Give the helper a fresh external-display report right away.
+                        self.pingHelper()
                     }
                     next()
                 }

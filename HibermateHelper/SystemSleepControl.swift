@@ -77,6 +77,16 @@ final class FileHelperStateStore: HelperStateStore {
 }
 
 enum SystemSleep {
+    /// `AppleClamshellState` from IOPMrootDomain; nil if unreadable or there's no lid.
+    static func lidClosed() -> Bool? {
+        let root = IORegistryEntryFromPath(kIOMainPortDefault, "IOPower:/IOPowerConnection/IOPMrootDomain")
+        guard root != MACH_PORT_NULL else { return nil }
+        defer { IOObjectRelease(root) }
+        guard let value = IORegistryEntryCreateCFProperty(root, "AppleClamshellState" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() else { return nil }
+        return (value as? Bool) ?? (value as? NSNumber)?.boolValue
+    }
+
     /// Requires root. The app decides whether sleeping is safe; the helper only
     /// rate-limits, so a misbehaving caller can't put the Mac into a sleep loop.
     private static var lastSleep: TimeInterval = -.infinity

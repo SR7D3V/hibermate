@@ -276,3 +276,9 @@ Real-hardware testing showed two things:
 Under the original rule (any assertion blocks sleep), a Mac in a bag could stay awake after the work ended. That's worse than having no Hibermate, and a heat risk.
 
 **Decision (option A):** other processes block Hibermate's sleep only with assertions macOS itself honors on lid close. That is `PreventSystemSleep` (e.g. `caffeinate -s`), and only on AC power. `PreventUserIdleSystemSleep` (e.g. plain `caffeinate`, Spotify, Zoom) no longer blocks it. The lid-open and external-display rules are unchanged, and `.critical` thermal still overrides everything.
+
+## A.7 Helper sleeps a lid-closed Mac when the app is lost (user, 2026-10-18)
+
+If the app crashes, or misses heartbeats for 2 minutes, during a hold, the helper restores `SleepDisabled` (invariant 1). It then **also puts the Mac to sleep**, but only if the lid is closed (read by the helper from the IORegistry) and the app's most recent heartbeat, at most 3 minutes old, reported no external display. Unknown or stale values mean no sleep.
+
+It never sleeps on SIGTERM (uninstall, unregistration, shutdown) or after a normal quit, since no hold is recorded then. Reason: macOS doesn't re-check lid sleep after the restore, so without this a crashed app would leave a Mac in a bag awake. The heartbeat XPC call now carries the external-display reading.

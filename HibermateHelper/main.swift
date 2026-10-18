@@ -12,7 +12,11 @@ let queue = DispatchQueue(label: "com.sr7d3v.hibermate.helper")
 let core = HelperCore(
     control: SystemSleepControl(),
     store: FileHelperStateStore(),
-    clock: { ProcessInfo.processInfo.systemUptime }
+    clock: { ProcessInfo.processInfo.systemUptime },
+    appLoss: HelperCore.AppLossSleep(
+        lidClosed: { SystemSleep.lidClosed() },
+        sleep: { _ = SystemSleep.sleepNow() }
+    )
 )
 
 final class HelperService: NSObject, HibermateHelperXPC {
@@ -32,9 +36,9 @@ final class HelperService: NSObject, HibermateHelperXPC {
         queue.async { reply(SystemSleep.sleepNow()) }
     }
 
-    func heartbeat(reply: @escaping (Bool) -> Void) {
+    func heartbeat(externalDisplayConnected: Bool, reply: @escaping (Bool) -> Void) {
         queue.async {
-            core.heartbeat()
+            core.heartbeat(externalDisplayConnected: externalDisplayConnected)
             reply(core.holdActive)
         }
     }

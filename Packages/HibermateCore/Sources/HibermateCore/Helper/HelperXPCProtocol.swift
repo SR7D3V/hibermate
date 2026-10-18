@@ -24,7 +24,9 @@ public enum HelperIdentity {
     func setSleepDisabled(_ disabled: Bool, reply: @escaping (_ ok: Bool) -> Void)
     /// Puts the Mac to sleep. The app calls this only after its own safety checks.
     func sleepNow(reply: @escaping (_ ok: Bool) -> Void)
-    /// Resets the dead-man timer, and doubles as a reachability ping. Replies
+    /// Resets the dead-man timer, and doubles as a reachability ping. It also
+    /// passes the app's external-display reading, which the helper uses only to
+    /// decide whether it may sleep a lid-closed Mac if the app is lost. Replies
     /// whether the helper currently has a hold recorded.
-    func heartbeat(reply: @escaping (_ holdActive: Bool) -> Void)
+    func heartbeat(externalDisplayConnected: Bool, reply: @escaping (_ holdActive: Bool) -> Void)
 }

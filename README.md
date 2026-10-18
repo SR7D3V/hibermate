@@ -67,7 +67,7 @@ Hibermate relies on **macOS's own thermal pressure signal**, which macOS calibra
 - **Battery:** releases at 20% (adjustable upward). **Low Power Mode:** holds at most 30 minutes.
 - **Maximum hold:** 4 hours by default, adjustable from 15 minutes to a hard limit of 12 hours.
 - **After any safety release**, Hibermate stays off until you open the lid again, the Mac has cooled, and the battery has recovered (or the Mac is plugged in).
-- **Crash safety:** if Hibermate crashes, is force-quit, or is deleted, normal sleep returns within 2 minutes. If you had `SleepDisabled` set yourself before installing, Hibermate never resets it.
+- **Crash safety:** if Hibermate crashes, is force-quit, or is deleted, normal sleep returns within 2 minutes. If the lid is closed and no external display is connected, the helper also puts the Mac to sleep, so it never stays awake in a bag. If you had `SleepDisabled` set yourself before installing, Hibermate never resets it.
 - **It never sleeps a Mac someone is using:** not with the lid open, and not with an external display connected. On power, it also respects apps that block lid-close sleep the way macOS does (for example `caffeinate -s`). Otherwise it puts the Mac to sleep exactly as closing the lid would have. The only exception is critical heat.
 
 All of these timeouts are **Hibermate's own design choices, not Apple numbers**. You can make them stricter in Settings, never looser, and thermal protection can't be turned off.

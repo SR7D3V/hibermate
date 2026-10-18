@@ -156,3 +156,106 @@ struct HelperCoreTests {
         #expect(control.writes.isEmpty)
     }
 }
+
+@Suite("Helper sleeps a lid-closed Mac when the app is lost")
+struct HelperAppLossSleepTests {
+    final class World {
+        var lid: Bool? = true
+        var sleeps = 0
+    }
+
+    func make(_ world: World) -> (HelperCore, FakeSleepControl, FakeClock) {
+        let control = FakeSleepControl(false)
+        let clock = FakeClock()
+        let core = HelperCore(control: control, store: FakeStateStore(), clock: { clock.now },
+                              appLoss: .init(lidClosed: { world.lid }, sleep: { world.sleeps += 1 }))
+        return (core, control, clock)
+    }
+
+    @Test func crashWithLidClosedRestoresThenSleeps() throws {
+        let w = World()
+        let (core, control, _) = make(w)
+        try core.setSleepDisabled(true)
+        core.heartbeat(externalDisplayConnected: false)
+        core.connectionInvalidated()
+        #expect(control.value == false, "restored first")
+        #expect(w.sleeps == 1)
+    }
+
+    @Test func deadManWithLidClosedSleeps() throws {
+        let w = World()
+        let (core, control, clock) = make(w)
+        try core.setSleepDisabled(true)
+        core.heartbeat(externalDisplayConnected: false)
+        clock.now += 121
+        core.tick()
+        #expect(control.value == false)
+        #expect(w.sleeps == 1, "the display report was 121 s old, still within 180 s")
+    }
+
+    @Test func lidOpenOrUnknownNeverSleeps() throws {
+        for lid in [false, nil] as [Bool?] {
+            let w = World()
+            w.lid = lid
+            let (core, _, _) = make(w)
+            try core.setSleepDisabled(true)
+            core.heartbeat(externalDisplayConnected: false)
+            core.connectionInvalidated()
+            #expect(w.sleeps == 0)
+        }
+    }
+
+    @Test func externalDisplayOrNoReportNeverSleeps() throws {
+        let w = World()
+        let (core, _, _) = make(w)
+        try core.setSleepDisabled(true)
+        core.connectionInvalidated() // never received a display report
+        #expect(w.sleeps == 0)
+
+        let w2 = World()
+        let (core2, _, _) = make(w2)
+        try core2.setSleepDisabled(true)
+        core2.heartbeat(externalDisplayConnected: true)
+        core2.connectionInvalidated()
+        #expect(w2.sleeps == 0, "clamshell with an external display is a desktop in use")
+    }
+
+    @Test func staleDisplayReportNeverSleeps() throws {
+        let w = World()
+        let (core, _, clock) = make(w)
+        try core.setSleepDisabled(true)
+        core.heartbeat(externalDisplayConnected: false)
+        clock.now += 200
+        core.connectionInvalidated()
+        #expect(w.sleeps == 0)
+    }
+
+    @Test func normalQuitAndSigtermNeverSleep() throws {
+        let w = World()
+        let (core, _, _) = make(w)
+        try core.setSleepDisabled(true)
+        core.heartbeat(externalDisplayConnected: false)
+        try core.setSleepDisabled(false) // the app quits cleanly and releases first
+        core.connectionInvalidated()      // then its connection closes
+        #expect(w.sleeps == 0)
+
+        try core.setSleepDisabled(true)
+        core.heartbeat(externalDisplayConnected: false)
+        core.terminate() // uninstall or shutdown
+        #expect(w.sleeps == 0)
+    }
+
+    @Test func failedRestoreDoesNotSleepUntilItSucceeds() throws {
+        let w = World()
+        let (core, control, _) = make(w)
+        try core.setSleepDisabled(true)
+        core.heartbeat(externalDisplayConnected: false)
+        control.failWrites = true
+        core.connectionInvalidated()
+        #expect(w.sleeps == 0, "never sleep while SleepDisabled is still set")
+        control.failWrites = false
+        core.tick()
+        #expect(control.value == false)
+        #expect(w.sleeps == 1)
+    }
+}

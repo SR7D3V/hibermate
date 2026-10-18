@@ -14,7 +14,8 @@ protocol PowerActions: AnyObject {
     func endHold(completion: @escaping (Bool) -> Void)
     func sleepNow()
     /// Replies whether the helper is reachable, and whether it has a hold recorded.
-    func heartbeat(completion: @escaping (_ reachable: Bool, _ holdActive: Bool) -> Void)
+    /// Passes the external-display state for the helper's app-loss sleep check.
+    func heartbeat(externalDisplayConnected: Bool, completion: @escaping (_ reachable: Bool, _ holdActive: Bool) -> Void)
 }
 
 /// `PreventUserIdleSystemSleep` while holding, so idle sleep is blocked even
@@ -72,9 +73,11 @@ final class HelperPowerActions: PowerActions {
         proxy(onError: {})?.sleepNow { _ in }
     }
 
-    func heartbeat(completion: @escaping (Bool, Bool) -> Void) {
+    func heartbeat(externalDisplayConnected: Bool, completion: @escaping (Bool, Bool) -> Void) {
         guard let helper = proxy(onError: { completion(false, false) }) else { completion(false, false); return }
-        helper.heartbeat { active in DispatchQueue.main.async { completion(true, active) } }
+        helper.heartbeat(externalDisplayConnected: externalDisplayConnected) { active in
+            DispatchQueue.main.async { completion(true, active) }
+        }
     }
 }
 
@@ -98,7 +101,7 @@ final class DryRunPowerActions: PowerActions {
         appLog.notice("[dry-run] would put the Mac to sleep")
     }
 
-    func heartbeat(completion: @escaping (Bool, Bool) -> Void) {
+    func heartbeat(externalDisplayConnected: Bool, completion: @escaping (Bool, Bool) -> Void) {
         completion(true, holding)
     }
 }

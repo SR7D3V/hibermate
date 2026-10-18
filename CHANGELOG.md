@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- If the app crashes or stops responding during a hold with the lid closed, the helper restores the sleep setting and also puts the Mac to sleep (only when no external display is connected).
 - Project spec, implementation plan, and contributor notes.
 - GPL-3.0 license.
 - Works with any AI tool on the Mac: hook integrations for Claude Code, OpenAI Codex CLI, Gemini CLI, Qwen Code, GitHub Copilot CLI, Cursor, and OpenCode; activity watching (CPU and GPU time) for local models such as Ollama, llama.cpp, MLX, vLLM, LM Studio, and LocalAI; and a generic command for scripts.
