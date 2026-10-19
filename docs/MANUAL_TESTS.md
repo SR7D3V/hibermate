@@ -20,6 +20,10 @@
     - Unanswered permission prompt: waiting → "permissionWaitExpired" after exactly 5 min. PASS.
     - Lost Stop (agent alive, silent): "dead: staleWorking" after exactly 15 min, then released after grace. PASS.
     - A session with background tasks stopped holding after the 15 min stale window ("backgroundStale"). PASS.
+  - **Round 2 (2026-10-20), lid closed, `scripts/lid-test.sh run --hold`:**
+    - 2a On AC: no gap; slept via the helper after grace ("Using AC"). PASS.
+    - 2b On AC with `caffeinate -s`: no gap; after grace, deliberately **not** slept, with the log naming `caffeinate: PreventSystemSleep`. PASS (option A, SPEC A.6).
+    - 2c On battery with `caffeinate -i`: no gap; slept via the helper after grace despite the idle assertion. PASS (option A).
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
