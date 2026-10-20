@@ -28,7 +28,13 @@ A loaded but idle local model doesn't keep the Mac awake. Only a model that's ac
 
 1. Download `Hibermate-<version>.dmg` from [Releases](https://github.com/SR7D3V/hibermate/releases) and check its SHA-256 against the one in the release notes: `shasum -a 256 Hibermate-<version>.dmg`.
 2. Open the DMG and drag **Hibermate** into **Applications**.
-3. Open Hibermate from Applications. Releases are currently **not signed by Apple**, so macOS blocks the first launch. Go to **System Settings → Privacy & Security**, scroll to the message about Hibermate, and click **Open Anyway**.
+3. Open Hibermate from Applications. Releases are currently **not signed by Apple**, so the first time macOS shows **"Hibermate" Not Opened**. That's expected:
+   1. Click **Done** (not *Move to Trash*).
+   2. Open **System Settings → Privacy & Security** and scroll down to the **Security** section.
+   3. Next to *"Hibermate" was blocked to protect your Mac*, click **Open Anyway**, and confirm with your password or Touch ID. The button appears for about an hour after the blocked attempt; if it's missing, try opening Hibermate once more.
+   4. Click **Open Anyway** once more in the final dialog. From then on, Hibermate opens like any other app.
+
+   If you prefer Terminal, this does the same after copying the app: `xattr -dr com.apple.quarantine /Applications/Hibermate.app`
 4. Hibermate appears in the menu bar (no Dock icon). Follow the setup window:
    - **Install the helper**, then turn on Hibermate in **System Settings → General → Login Items & Extensions**. Until you approve it, Hibermate keeps nothing awake.
    - **Choose which AI tools to watch.**

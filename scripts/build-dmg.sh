@@ -67,11 +67,59 @@ codesign --verify --deep --strict "$APP"
 echo "    signature: $(codesign -dv "$APP" 2>&1 | sed -n 's/^Signature=//p')"
 
 echo "==> Creating DMG"
-rm -rf "$STAGING" "$DMG" "$DMG.sha256"
-mkdir -p "$STAGING"
+VOLNAME="Hibermate $VERSION"
+RW_DMG="$BUILD_DIR/rw.dmg"
+rm -rf "$STAGING" "$DMG" "$DMG.sha256" "$RW_DMG"
+mkdir -p "$STAGING/.background"
 ditto "$APP" "$STAGING/Hibermate.app"
 ln -s /Applications "$STAGING/Applications"
-hdiutil create -volname "Hibermate $VERSION" -srcfolder "$STAGING" -fs HFS+ -format UDZO -ov "$DMG" -quiet
+
+# Window background with the install steps (drawn with CoreGraphics; no
+# third-party tools). Combined into one HiDPI TIFF for Retina displays.
+swift "$ROOT/scripts/dmg/render-background.swift" "$BUILD_DIR/background" >/dev/null
+tiffutil -cathidpicheck "$BUILD_DIR/background/background.png" "$BUILD_DIR/background/background@2x.png" \
+    -out "$STAGING/.background/background.tiff" 2>/dev/null
+
+hdiutil create -volname "$VOLNAME" -srcfolder "$STAGING" -fs HFS+ -format UDRW -ov "$RW_DMG" -quiet
+MOUNT_DIR="$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG" | sed -n 's/.*\(\/Volumes\/.*\)$/\1/p' | head -1)"
+
+# Arrange the Finder window: icon positions must match render-background.swift.
+# This needs permission for the terminal to control Finder. If it isn't granted
+# (or Finder isn't available, e.g. headless CI), the DMG still works, just
+# without the custom layout.
+if /usr/bin/osascript >/dev/null 2>&1 <<EOF
+tell application "Finder"
+    tell disk "$VOLNAME"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set the bounds of container window to {200, 120, 860, 562}
+        set viewOptions to the icon view options of container window
+        set arrangement of viewOptions to not arranged
+        set icon size of viewOptions to 112
+        set text size of viewOptions to 13
+        set background picture of viewOptions to file ".background:background.tiff"
+        set position of item "Hibermate.app" of container window to {165, 190}
+        set position of item "Applications" of container window to {495, 190}
+        close
+        open
+        update without registering applications
+        delay 1
+        close
+    end tell
+end tell
+EOF
+then
+    echo "    DMG window layout applied"
+else
+    echo "    warning: couldn't arrange the DMG window (Finder automation not allowed); using the plain layout" >&2
+fi
+chmod -Rf go-w "$MOUNT_DIR" 2>/dev/null || true
+sync
+hdiutil detach "$MOUNT_DIR" -quiet || hdiutil detach "$MOUNT_DIR" -force -quiet
+hdiutil convert "$RW_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG" -quiet
+rm -f "$RW_DMG"
 
 if [ -n "$SIGN_IDENTITY" ]; then
     codesign --sign "$SIGN_IDENTITY" --timestamp "$DMG"
