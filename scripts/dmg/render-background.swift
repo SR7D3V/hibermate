@@ -2,13 +2,17 @@
 // Applications, and the first-launch steps for unsigned builds.
 //
 // Usage: swift scripts/dmg/render-background.swift <output-dir>
-// Writes background.png (660x420) and background@2x.png (1320x840).
-// The icon positions here must match scripts/build-dmg.sh.
+// Writes background.png (760x520) and background@2x.png (1520x1040).
+// The window shows about 660x420 of it, but newer Finder versions make the
+// content area a little bigger, so the gradient extends past the design to
+// leave no uncovered edges. The icon positions here must match scripts/build-dmg.sh.
 
 import AppKit
 import Foundation
 
-let width: CGFloat = 660, height: CGFloat = 420
+let width: CGFloat = 760, height: CGFloat = 520
+/// The designed area (top-left aligned with the window); text centers on it.
+let designWidth: CGFloat = 660
 let appIconCenter = CGPoint(x: 165, y: 190)
 let applicationsCenter = CGPoint(x: 495, y: 190)
 
@@ -32,7 +36,10 @@ func draw(scale: CGFloat) -> Data {
     // Soft light background.
     let gradient = NSGradient(colors: [NSColor(srgbRed: 0.97, green: 0.97, blue: 0.99, alpha: 1),
                                        NSColor(srgbRed: 0.91, green: 0.92, blue: 0.96, alpha: 1)])!
-    gradient.draw(in: NSRect(x: 0, y: 0, width: width, height: height), angle: 90)
+    // The gradient ends (bottom of the design) in this color; it fills the rest.
+    cg.setFillColor(NSColor(srgbRed: 0.91, green: 0.92, blue: 0.96, alpha: 1).cgColor)
+    cg.fill(CGRect(x: 0, y: 0, width: width, height: height))
+    gradient.draw(in: NSRect(x: 0, y: 0, width: width, height: 420), angle: 90)
 
     func text(_ string: String, _ font: NSFont, _ color: NSColor, centeredAt y: CGFloat, maxWidth: CGFloat = 580) {
         let style = NSMutableParagraphStyle()
@@ -43,7 +50,7 @@ func draw(scale: CGFloat) -> Data {
         // Text drawing needs an unflipped context.
         let flipped = NSGraphicsContext(cgContext: cg, flipped: true)
         NSGraphicsContext.current = flipped
-        attributed.draw(with: NSRect(x: (width - maxWidth) / 2, y: y - bounds.height / 2, width: maxWidth, height: bounds.height + 4),
+        attributed.draw(with: NSRect(x: (designWidth - maxWidth) / 2, y: y - bounds.height / 2, width: maxWidth, height: bounds.height + 4),
                         options: [.usesLineFragmentOrigin])
         NSGraphicsContext.restoreGraphicsState()
     }
@@ -68,7 +75,7 @@ func draw(scale: CGFloat) -> Data {
     cg.fillPath()
 
     // First-launch steps.
-    let panel = CGRect(x: 40, y: 292, width: width - 80, height: 104)
+    let panel = CGRect(x: 40, y: 292, width: designWidth - 80, height: 104)
     cg.setFillColor(NSColor.white.withAlphaComponent(0.85).cgColor)
     cg.addPath(CGPath(roundedRect: panel, cornerWidth: 14, cornerHeight: 14, transform: nil))
     cg.fillPath()
