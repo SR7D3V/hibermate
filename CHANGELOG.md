@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-21
+
+First public release (early release, unsigned).
+
 ### Added
 - Update check: once a day Hibermate asks GitHub for the latest published version. When there's a newer one, a green dot appears on the menu bar icon and an UPDATE button in the menu; both open the download page. It can be turned off in Settings → General.
 - The grace-period countdown in the menu ticks every second.
@@ -19,3 +23,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - README and a manual hardware test checklist.
 - Xcode project with the menu bar app, privileged helper, and hook binary; `--dry-run` mode.
 - HibermateCore package: hold state machine with thermal, battery, Low Power Mode, and max-hold safety rules; re-arm latch; Claude Code hook event mapping and session liveness; order-preserving settings.json merge and unmerge; privileged helper core with a dead-man switch; unit tests.
+
+[Unreleased]: https://github.com/SR7D3V/hibermate/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/SR7D3V/hibermate/releases/tag/v0.1.0
