@@ -53,7 +53,7 @@ struct MenuBarLabel: View {
     @AppStorage("onboardingShown") private var onboardingShown = false
 
     var body: some View {
-        MenuBarIcon(icon: controller.snapshot.icon)
+        MenuBarIcon(icon: controller.snapshot.icon, updateAvailable: controller.updates.availableUpdate != nil)
             .task {
                 // Give the first tick a moment to work out the setup state.
                 try? await Task.sleep(for: .seconds(1))
@@ -68,17 +68,60 @@ struct MenuBarLabel: View {
 
 struct MenuBarIcon: View {
     let icon: MenuSnapshot.Icon
+    var updateAvailable = false
 
     var body: some View {
-        // Bear template images (scripts/icons/render-icons.swift): asleep when
-        // the Mac may sleep normally, one eye open while keeping it awake.
-        switch icon {
-        case .idle: Image("MenuBarSleeping")
-        case .holding: Image("MenuBarAwake")
-        case .grace: Image(systemName: "hourglass")
-        case .warning: Image(systemName: "exclamationmark.triangle")
-        case .setupNeeded: Image(systemName: "gearshape")
+        if updateAvailable, let base = baseImage {
+            Image(nsImage: Self.withUpdateDot(base))
+        } else {
+            switch icon {
+            case .idle: Image("MenuBarSleeping")
+            case .holding: Image("MenuBarAwake")
+            case .grace: Image(systemName: "hourglass")
+            case .warning: Image(systemName: "exclamationmark.triangle")
+            case .setupNeeded: Image(systemName: "gearshape")
+            }
         }
+    }
+
+    // Bear template images (scripts/icons/render-icons.swift): asleep when
+    // the Mac may sleep normally, one eye open while keeping it awake.
+    private var baseImage: NSImage? {
+        switch icon {
+        case .idle: NSImage(named: "MenuBarSleeping")
+        case .holding: NSImage(named: "MenuBarAwake")
+        case .grace: NSImage(systemSymbolName: "hourglass", accessibilityDescription: nil)
+        case .warning: NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: nil)
+        case .setupNeeded: NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
+        }
+    }
+
+    /// The icon with a small green dot in its top-right corner. A template
+    /// image can't carry color, so the icon is drawn in the menu bar's label
+    /// color at draw time, which follows light and dark menu bars.
+    static func withUpdateDot(_ base: NSImage) -> NSImage {
+        let size = base.size
+        let image = NSImage(size: size, flipped: false) { rect in
+            let glyph = NSImage(size: size, flipped: false) { r in
+                base.draw(in: r)
+                NSColor.labelColor.set()
+                r.fill(using: .sourceAtop)
+                return true
+            }
+            glyph.draw(in: rect)
+            let d: CGFloat = 6.5
+            let dot = NSRect(x: rect.maxX - d, y: rect.maxY - d, width: d, height: d)
+            // Cut a thin gap around the dot so it reads against the glyph.
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: dot.insetBy(dx: -1.25, dy: -1.25)).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            NSColor.systemGreen.setFill()
+            NSBezierPath(ovalIn: dot).fill()
+            return true
+        }
+        image.isTemplate = false
+        image.accessibilityDescription = "Hibermate, update available"
+        return image
     }
 }
 

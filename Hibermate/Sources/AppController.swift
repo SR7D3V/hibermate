@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import HibermateCore
 
@@ -85,7 +86,14 @@ enum SetupState: Equatable {
 final class AppController: ObservableObject {
     @Published private(set) var snapshot = MenuSnapshot()
     @Published private(set) var setup: SetupState = .helperNotRegistered
-    @Published var settings: UserSettings { didSet { saveSettings() } }
+    @Published var settings: UserSettings {
+        didSet {
+            saveSettings()
+            if settings.checkForUpdates != oldValue.checkForUpdates { updates.settingChanged() }
+        }
+    }
+    let updates = UpdateChecker()
+    private var updatesObserver: AnyCancellable?
     /// The page Hibermate's window shows; the menu bar panel can jump to one.
     @Published var page: MainPage = .overview
     @Published private(set) var enabledIntegrations: Set<AgentID> = []
@@ -166,6 +174,9 @@ final class AppController: ObservableObject {
         }
         timer?.tolerance = 0.5
         tick()
+        // The menu shows the checker's state; republish its changes.
+        updatesObserver = updates.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        if !dryRun { updates.start { [weak self] in self?.settings.checkForUpdates ?? false } }
     }
 
     // MARK: - Setup

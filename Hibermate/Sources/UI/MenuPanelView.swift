@@ -12,8 +12,23 @@ struct MenuPanelView: View {
     var body: some View {
         let s = controller.snapshot
         VStack(alignment: .leading, spacing: 14) {
-            HStack { Spacer(); BearMark(awake: s.icon == .holding || s.icon == .grace, size: 34); Spacer() }
-                .padding(.top, 4)
+            ZStack(alignment: .topTrailing) {
+                HStack { Spacer(); BearMark(awake: s.icon == .holding || s.icon == .grace, size: 34); Spacer() }
+                    .padding(.top, 4)
+                if let update = controller.updates.availableUpdate {
+                    Button {
+                        NSWorkspace.shared.open(update.releasePage)
+                        dismiss()
+                    } label: {
+                        Text("UPDATE").font(.caption.weight(.bold)).tracking(0.6)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 9).padding(.vertical, 4)
+                            .background(Capsule().fill(Color.green))
+                    }
+                    .buttonStyle(.plain)
+                    .help("Hibermate \(update.version) is available. Opens the download page.")
+                }
+            }
 
             if controller.setup != .ready {
                 notice("Finish setup to keep your Mac awake", symbol: "gearshape") { open(.general) }

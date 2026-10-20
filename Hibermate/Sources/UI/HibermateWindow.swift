@@ -394,6 +394,8 @@ struct GeneralPage: View {
             }
         }
 
+        UpdatesCard(controller: controller, updates: controller.updates)
+
         SectionTitle(text: "Uninstall")
         Card {
             Text("Restores your sleep setting, removes Hibermate's hooks from every AI tool (keeping backups), removes the helper, deletes its data, and moves Hibermate to the Trash.")
@@ -488,5 +490,60 @@ struct AboutPage: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 28)
         }
+    }
+}
+
+struct UpdatesCard: View {
+    @ObservedObject var controller: AppController
+    @ObservedObject var updates: UpdateChecker
+
+    var body: some View {
+        SectionTitle(text: "Updates")
+        Card {
+            SettingRow(symbol: "arrow.down.circle", title: "Check for updates automatically",
+                       subtitle: "Once a day, asks GitHub for the latest version number. Nothing about your Mac is sent.") {
+                Toggle("", isOn: $controller.settings.checkForUpdates).toggleStyle(.switch).labelsHidden()
+            }
+            RowDivider(inset: 58)
+            SettingRow(symbol: statusSymbol, title: statusTitle, subtitle: statusDetail) {
+                if let update = updates.availableUpdate {
+                    Button("Download") { NSWorkspace.shared.open(update.releasePage) }
+                        .buttonStyle(.borderedProminent).tint(.green)
+                } else {
+                    Button("Check Now") { updates.checkNow() }
+                        .disabled(updates.status == .checking)
+                }
+            }
+        }
+    }
+
+    private var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+    }
+
+    private var statusSymbol: String {
+        switch updates.status {
+        case .available: "sparkles"
+        case .failed: "wifi.exclamationmark"
+        default: "checkmark.circle"
+        }
+    }
+
+    private var statusTitle: String {
+        switch updates.status {
+        case .available(let update): "Hibermate \(update.version) is available"
+        case .checking: "Checking…"
+        case .upToDate: "Hibermate \(version) is up to date"
+        case .failed: "Couldn't check for updates"
+        case .idle: "Hibermate \(version)"
+        }
+    }
+
+    private var statusDetail: String {
+        if case .available = updates.status {
+            return "Download the new DMG and drag Hibermate into Applications to replace this version."
+        }
+        guard let last = updates.lastCheck else { return "Not checked yet." }
+        return "Last checked \(last.formatted(.relative(presentation: .named)))."
     }
 }
