@@ -61,7 +61,7 @@ enum MainPage: String, CaseIterable, Identifiable, Hashable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .overview: "Overview"
+        case .overview: "Status"
         case .agents: "AI Tools"
         case .safety: "Safety"
         case .general: "General"

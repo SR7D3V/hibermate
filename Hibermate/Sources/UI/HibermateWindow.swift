@@ -9,16 +9,20 @@ struct HibermateWindow: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: Binding(get: { controller.page }, set: { if let p = $0 { controller.page = p } })) {
-                Section("Hibermate") {
+            // Plain buttons rather than List selection: each one sets the page
+            // directly, so a click can never be lost to a selection/tag mismatch.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    sidebarHeader("Hibermate")
                     sidebarItem(.overview, "moon.zzz")
                     sidebarItem(.agents, "sparkles")
                     sidebarItem(.safety, "shield.lefthalf.filled")
-                }
-                Section("App") {
-                    sidebarItem(.general, "gearshape")
+                    sidebarHeader("App").padding(.top, 10)
+                    sidebarItem(.general, "gearshape", attention: controller.setup != .ready)
                     sidebarItem(.about, "info.circle")
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
             }
             .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 240)
         } detail: {
@@ -43,10 +47,43 @@ struct HibermateWindow: View {
         .onAppear { controller.refreshIntegrations() }
     }
 
-    private func sidebarItem(_ page: MainPage, _ symbol: String) -> some View {
-        Label(page.title, systemImage: symbol)
-            .tag(page)
-            .badge(page == .general && controller.setup != .ready ? 1 : 0)
+    private func sidebarHeader(_ title: String) -> some View {
+        Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            .padding(.horizontal, 10).padding(.top, 4).padding(.bottom, 2)
+    }
+
+    private func sidebarItem(_ page: MainPage, _ symbol: String, attention: Bool = false) -> some View {
+        SidebarButton(title: page.title, symbol: symbol, selected: controller.page == page, attention: attention) {
+            controller.page = page
+        }
+    }
+}
+
+/// A sidebar row: icon and title, with a rounded highlight when selected or hovered.
+struct SidebarButton: View {
+    let title: String
+    let symbol: String
+    let selected: Bool
+    var attention = false
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: symbol).frame(width: 20).foregroundStyle(selected ? .primary : .secondary)
+                Text(title)
+                Spacer()
+                if attention { Circle().fill(.orange).frame(width: 7, height: 7) }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(selected ? 0.13 : (hovering ? 0.05 : 0))))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
     }
 }
 
