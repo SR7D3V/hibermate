@@ -93,6 +93,8 @@ fi
 if /usr/bin/defaults read com.sr7d3v.hibermate >/dev/null 2>&1; then
     /usr/bin/defaults delete com.sr7d3v.hibermate && echo "Deleted Hibermate's preferences"
 fi
+# macOS can leave the emptied file behind.
+/bin/rm -f "$HOME/Library/Preferences/com.sr7d3v.hibermate.plist"
 
 # 6. The app itself.
 if [ -d "$APP" ] && ask "Move $APP to the Trash?"; then
