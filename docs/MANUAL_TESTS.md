@@ -38,6 +38,9 @@
     - 3e part 2, restart during a hold: on restart, the app quit and released ("Hold ended: quitting"); the helper restored `SleepDisabled 0` before shutdown; after boot the helper started before login with no state file left; `SleepDisabled 0`. PASS.
     - 3f Codex (VS Code extension, bundled codex app-server): enabling created `~/.codex/hooks.json` (12 events). The hooks did **not** run until they were trusted in the Codex panel's Hooks screen (`hooks/list`); after that, a "codex" session was recorded (working 23:33:05 → idle on Stop 23:33:38), Hibermate held, and the agent PID was the Codex process. PASS.
     - 3g External display: skipped (no monitor available).
+  - **Round 4:**
+    - 4a In-app uninstall: processes stopped; helper unregistered; `SleepDisabled 0`; both support folders removed; `~/.claude/settings.json` **byte-identical** to the pre-Hibermate original (backups kept); `~/.codex/hooks.json` deleted (Hibermate created it). Leftover found and fixed: the preferences plist (`defaults delete` plus deleting the emptied file).
+    - 4b Fresh install from a quarantined DMG (as if downloaded with Safari): macOS showed "Hibermate Not Opened" (unsigned); Privacy & Security → Open Anyway worked; three-step setup registered and approved the helper and installed the Claude Code hooks (with a backup). PASS. The DMG window layout needs Finder automation permission, which wasn't granted in this session, so the plain layout was used.
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
