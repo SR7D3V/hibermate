@@ -143,13 +143,25 @@ enum HelperRegistration {
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
-    /// The running helper answered, so this binary is the approved one.
-    static func recordCurrentFingerprint() {
-        UserDefaults.standard.set(bundledHelperFingerprint, forKey: fingerprintKey)
+    /// The fingerprint recorded at the last registration, if any.
+    static var registeredFingerprint: String? {
+        UserDefaults.standard.string(forKey: fingerprintKey)
     }
 
+    /// Only for installs from before fingerprints were recorded: the helper
+    /// answered, so assume the bundled binary is the registered one.
+    static func adoptFingerprintIfMissing() {
+        if registeredFingerprint == nil {
+            UserDefaults.standard.set(bundledHelperFingerprint, forKey: fingerprintKey)
+        }
+    }
+
+    /// The bundled helper differs from the one that was registered. Even if the
+    /// old helper still answers (it keeps running from memory), launchd will
+    /// refuse to start the new binary at its next launch, e.g. after a reboot.
     static var helperChangedSinceRegistration: Bool {
-        UserDefaults.standard.string(forKey: fingerprintKey) != bundledHelperFingerprint
+        guard let registered = registeredFingerprint else { return false }
+        return registered != bundledHelperFingerprint
     }
 
     /// Unregisters and registers again. macOS may ask for Login Items approval again.

@@ -161,12 +161,13 @@ final class AppController: ObservableObject {
             guard let self else { return }
             self.helperReachable = reachable
             self.lastHeartbeat = ProcessInfo.processInfo.systemUptime
-            if reachable {
-                HelperRegistration.recordCurrentFingerprint()
-            } else if !self.dryRun, !self.triedReregister, AppLocation.isInApplications,
-                      HelperRegistration.helperChangedSinceRegistration {
-                // After an update, launchd refuses to start a helper whose cdhash
-                // changed (launch constraint). Re-register once per launch.
+            if reachable { HelperRegistration.adoptFingerprintIfMissing() }
+            if !self.dryRun, !self.triedReregister, AppLocation.isInApplications,
+               HelperRegistration.helperChangedSinceRegistration || (!reachable && HelperRegistration.registeredFingerprint == nil) {
+                // After an update that changed the helper, re-register right away,
+                // while the user is at the Mac. launchd won't start a helper whose
+                // cdhash changed (launch constraint), so waiting would leave it
+                // broken after the next reboot. Once per launch.
                 self.triedReregister = true
                 Task { @MainActor in
                     await HelperRegistration.reregister()
