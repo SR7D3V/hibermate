@@ -82,14 +82,17 @@ tiffutil -cathidpicheck "$BUILD_DIR/background/background.png" "$BUILD_DIR/backg
 
 hdiutil create -volname "$VOLNAME" -srcfolder "$STAGING" -fs HFS+ -format UDRW -ov "$RW_DMG" -quiet
 MOUNT_DIR="$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG" | sed -n 's/.*\(\/Volumes\/.*\)$/\1/p' | head -1)"
+# If another volume with the same name is already mounted (e.g. a previous
+# Hibermate DMG), macOS appends " 1", " 2"…; address the one we just mounted.
+DISK_NAME="$(basename "$MOUNT_DIR")"
 
 # Arrange the Finder window: icon positions must match render-background.swift.
 # This needs permission for the terminal to control Finder. If it isn't granted
 # (or Finder isn't available, e.g. headless CI), the DMG still works, just
 # without the custom layout.
-if /usr/bin/osascript >/dev/null 2>&1 <<EOF
+if OSA_ERR="$(/usr/bin/osascript 2>&1 >/dev/null <<EOF
 tell application "Finder"
-    tell disk "$VOLNAME"
+    tell disk "$DISK_NAME"
         open
         set current view of container window to icon view
         set toolbar visible of container window to false
@@ -110,10 +113,10 @@ tell application "Finder"
     end tell
 end tell
 EOF
-then
+)"; then
     echo "    DMG window layout applied"
 else
-    echo "    warning: couldn't arrange the DMG window (Finder automation not allowed); using the plain layout" >&2
+    echo "    warning: couldn't arrange the DMG window ($OSA_ERR); using the plain layout" >&2
 fi
 chmod -Rf go-w "$MOUNT_DIR" 2>/dev/null || true
 sync
