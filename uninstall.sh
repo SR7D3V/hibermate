@@ -76,8 +76,18 @@ HOOK=""
 for candidate in "$USER_DIR/hooks/hibermate-hook" "$APP/Contents/MacOS/hibermate-hook"; do
     if [ -x "$candidate" ]; then HOOK="$candidate"; break; fi
 done
+LEFTOVERS=""
+for f in "$HOME/.claude/settings.json" "$HOME/.codex/hooks.json" "$HOME/.gemini/settings.json" \
+         "$HOME/.qwen/settings.json" "$HOME/.cursor/hooks.json"; do
+    /usr/bin/grep -qs 'Hibermate/hooks/hibermate-hook' "$f" && LEFTOVERS="$LEFTOVERS $f"
+done
+for f in "$HOME/.copilot/hooks/hibermate.json" "$HOME/.config/opencode/plugins/hibermate.js"; do
+    [ -e "$f" ] && LEFTOVERS="$LEFTOVERS $f"
+done
 if [ -n "$HOOK" ]; then
     "$HOOK" --uninstall-integrations
+elif [ -z "$LEFTOVERS" ]; then
+    echo "No Hibermate hooks found in any AI tool's settings."
 else
     echo "Couldn't find hibermate-hook. If you enabled integrations, remove entries containing"
     echo "'Application Support/Hibermate/hooks/hibermate-hook' from: ~/.claude/settings.json,"
@@ -91,7 +101,8 @@ if [ -d "$USER_DIR" ]; then
     /bin/rm -rf "$USER_DIR" && echo "Deleted $USER_DIR"
 fi
 if /usr/bin/defaults read com.sr7d3v.hibermate >/dev/null 2>&1; then
-    /usr/bin/defaults delete com.sr7d3v.hibermate && echo "Deleted Hibermate's preferences"
+    # An emptied domain reads fine but can't be deleted; the rm below covers it.
+    /usr/bin/defaults delete com.sr7d3v.hibermate 2>/dev/null && echo "Deleted Hibermate's preferences"
 fi
 # macOS can leave the emptied file behind.
 /bin/rm -f "$HOME/Library/Preferences/com.sr7d3v.hibermate.plist"

@@ -41,6 +41,7 @@
   - **Round 4:**
     - 4a In-app uninstall: processes stopped; helper unregistered; `SleepDisabled 0`; both support folders removed; `~/.claude/settings.json` **byte-identical** to the pre-Hibermate original (backups kept); `~/.codex/hooks.json` deleted (Hibermate created it). Leftover found and fixed: the preferences plist (`defaults delete` plus deleting the emptied file).
     - 4b Fresh install from a quarantined DMG (as if downloaded with Safari): macOS showed "Hibermate Not Opened" (unsigned); Privacy & Security → Open Anyway worked; three-step setup registered and approved the helper and installed the Claude Code hooks (with a backup). PASS. The DMG window layout needs Finder automation permission, which wasn't granted in this session, so the plain layout was used.
+    - 4c `sh uninstall.sh` with the app already removed (2026-10-21): the end state was clean. No app, helper, processes, user or root data, or preferences remained; `~/.claude/settings.json` was byte-identical to the original backup; no hooks were left in any tool; SleepDisabled 0. PASS. The script printed a needless "remove hooks manually" warning and a `defaults` error; both fixed.
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
@@ -99,4 +100,4 @@ Fastest visible check, with no tool settings changed: `scripts/lid-test.sh run -
 
 ## 6. Uninstall
 - [ ] In-app Uninstall: every enabled tool's config matches its pre-install backup, the helper is gone (`launchctl print system/com.sr7d3v.hibermate.helper` fails), and both `~/Library/Application Support/Hibermate` and `/Library/Application Support/Hibermate` are gone. `pmset -g` matches the pre-install values.
-- [ ] `sh uninstall.sh` on a machine with the app already deleted: the same end state.
+- [x] `sh uninstall.sh` on a machine with the app already deleted: the same end state.
