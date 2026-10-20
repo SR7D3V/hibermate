@@ -98,8 +98,14 @@ fi
 
 # 6. The app itself.
 if [ -d "$APP" ] && ask "Move $APP to the Trash?"; then
-    /usr/bin/osascript -e "tell application \"Finder\" to delete POSIX file \"$APP\"" >/dev/null 2>&1 \
-        && echo "Moved Hibermate.app to the Trash"
+    # A plain move needs no Finder automation permission. A timestamp avoids
+    # clashing with an earlier copy already in the Trash.
+    TRASHED="$HOME/.Trash/Hibermate $(date +%Y-%m-%d\ %H.%M.%S).app"
+    if /bin/mv "$APP" "$TRASHED"; then
+        echo "Moved Hibermate.app to the Trash"
+    else
+        echo "Couldn't move it; drag /Applications/Hibermate.app to the Trash yourself."
+    fi
 fi
 
 echo
