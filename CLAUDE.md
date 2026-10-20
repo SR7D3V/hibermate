@@ -68,4 +68,5 @@ Bundle IDs `com.sr7d3v.hibermate` and `.helper`; GPL-3.0; unsigned (ad-hoc) rele
 - [x] Real helper test on the dev Mac (Mac15,6, 2026-10-17): the ad-hoc helper registered and was approved; hold → SleepDisabled 1; grace → restored; kill -9 app → restored in 1 s. Found and fixed a lagging pmset re-read in the helper.
 - [x] Lid-closed test on battery (scripts/lid-test.sh): stayed awake for the whole run, then slept via the helper after grace. PASS (docs/MANUAL_TESTS.md results log)
 - [x] Real Claude Code session with the integration, lid closed, battery: held for the whole task, then slept after grace. PASS (2026-10-18, after the App Nap fix)
+- [x] v0.1.0 released on GitHub (2026-10-21)
 - [ ] Real-world verification of the other integrations (payload fields, trust prompts; see "unconfirmed" in AGENTS.md)
