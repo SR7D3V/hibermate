@@ -29,6 +29,24 @@ enum HookBinaryInstaller {
         try AtomicFile.write(try Data(contentsOf: source), to: paths.hookBinary, permissions: 0o755)
     }
 
+    /// Replaces an installed copy that differs from the one in the app bundle
+    /// (after an app update). It only touches a copy that already exists, so it
+    /// never installs hooks the user didn't enable.
+    static func refreshIfOutdated(paths: HibermatePaths) {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: paths.hookBinary.path),
+              let source = Bundle.main.url(forAuxiliaryExecutable: "hibermate-hook"),
+              let bundled = try? Data(contentsOf: source),
+              let installed = try? Data(contentsOf: paths.hookBinary),
+              bundled != installed else { return }
+        do {
+            try AtomicFile.write(bundled, to: paths.hookBinary, permissions: 0o755)
+            appLog.notice("Updated the installed hook program")
+        } catch {
+            appLog.error("Couldn't update the hook program: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
     static func remove(paths: HibermatePaths) {
         try? FileManager.default.removeItem(at: paths.hooksDirectory)
     }

@@ -14,11 +14,17 @@ public struct HookConfigFile: Sendable {
     /// Hibermate owns the whole file (e.g. ~/.copilot/hooks/hibermate.json):
     /// uninstall deletes it instead of leaving an empty shell.
     public var ownedFile: Bool
+    /// A file that holds only hooks (e.g. ~/.codex/hooks.json). If nothing but
+    /// Hibermate's entries remain, uninstall deletes it, because Hibermate
+    /// created it. General settings files are never deleted.
+    public var deleteWhenEmpty: Bool
     /// Create the parent directory if it's missing (only for owned files in
     /// a tool's existing config folder).
     public var createsParentDirectory: Bool
 
-    public init(url: URL, schema: HookConfigSchema = .claudeCode, ownedFile: Bool = false, createsParentDirectory: Bool = false) {
+    public init(url: URL, schema: HookConfigSchema = .claudeCode, ownedFile: Bool = false,
+                createsParentDirectory: Bool = false, deleteWhenEmpty: Bool = false) {
+        self.deleteWhenEmpty = deleteWhenEmpty
         self.url = url
         self.schema = schema
         self.ownedFile = ownedFile
@@ -49,7 +55,7 @@ public struct HookConfigFile: Sendable {
 
     @discardableResult
     public func uninstall(now: Date = Date()) throws -> Outcome {
-        if ownedFile {
+        if ownedFile || deleteWhenEmpty {
             let target = url.resolvingSymlinksInPath()
             guard let data = FileManager.default.contents(atPath: target.path) else { return Outcome(changed: false, backup: nil) }
             // Delete only if the file still holds nothing but Hibermate's entries.

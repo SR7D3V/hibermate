@@ -128,6 +128,24 @@ struct HookConfigSchemaTests {
         #expect(!FileManager.default.fileExists(atPath: file.url.path))
     }
 
+    @Test func hookOnlyFileCreatedByHibermateIsDeletedButUserFileIsKept() throws {
+        let dir = makeTempDir()
+        // Hibermate created it.
+        let created = HookConfigFile(url: dir.appendingPathComponent("a/hooks.json"), schema: .codex,
+                                     createsParentDirectory: true, deleteWhenEmpty: true)
+        try created.install()
+        try created.uninstall()
+        #expect(!FileManager.default.fileExists(atPath: created.url.path))
+        // The user already had hooks of their own.
+        let userURL = dir.appendingPathComponent("hooks.json")
+        let original = #"{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"mine.sh"}]}]}}"#
+        try Data(original.utf8).write(to: userURL)
+        let userFile = HookConfigFile(url: userURL, schema: .codex, deleteWhenEmpty: true)
+        try userFile.install()
+        try userFile.uninstall()
+        #expect(try String(contentsOf: userURL, encoding: .utf8) == original)
+    }
+
     @Test func ownedFileWithUserEditsIsKept() throws {
         let dir = makeTempDir()
         let url = dir.appendingPathComponent("hibermate.json")

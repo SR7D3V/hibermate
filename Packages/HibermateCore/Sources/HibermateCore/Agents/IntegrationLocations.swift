@@ -17,7 +17,8 @@ public enum IntegrationLocations {
         return [
             .init(displayName: "Claude Code", file: .userSettings(home: home), toolDirectory: dir(".claude")),
             .init(displayName: "OpenAI Codex CLI",
-                  file: HookConfigFile(url: dir(".codex").appendingPathComponent("hooks.json"), schema: .codex),
+                  file: HookConfigFile(url: dir(".codex").appendingPathComponent("hooks.json"), schema: .codex,
+                                       deleteWhenEmpty: true),
                   toolDirectory: dir(".codex"),
                   note: "Codex asks you to review and trust new hooks in its /hooks menu before they run."),
             .init(displayName: "Gemini CLI",
@@ -31,7 +32,8 @@ public enum IntegrationLocations {
                                        schema: .copilot, ownedFile: true, createsParentDirectory: true),
                   toolDirectory: dir(".copilot")),
             .init(displayName: "Cursor (editor agent and CLI)",
-                  file: HookConfigFile(url: dir(".cursor").appendingPathComponent("hooks.json"), schema: .cursor),
+                  file: HookConfigFile(url: dir(".cursor").appendingPathComponent("hooks.json"), schema: .cursor,
+                                       deleteWhenEmpty: true),
                   toolDirectory: dir(".cursor")),
         ]
     }

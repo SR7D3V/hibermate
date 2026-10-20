@@ -89,6 +89,7 @@ final class AppController: ObservableObject {
 
     func start() {
         refreshSetup()
+        if !dryRun { HookBinaryInstaller.refreshIfOutdated(paths: paths) }
         // Re-registering after an update happens in pingHelper(), and only if
         // the helper doesn't respond, so an approval that's still valid is
         // never thrown away.
