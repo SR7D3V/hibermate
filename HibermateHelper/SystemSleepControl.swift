@@ -1,5 +1,5 @@
 import Foundation
-import HibermateCore
+import HibermateHelperKit
 import IOKit
 import IOKit.pwr_mgt
 import os

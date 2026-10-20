@@ -4,7 +4,7 @@
 
 import Darwin
 import Foundation
-import HibermateCore
+import HibermateHelperKit
 
 /// All state changes run on this queue: XPC calls, timers, and signals.
 let queue = DispatchQueue(label: "com.sr7d3v.hibermate.helper")

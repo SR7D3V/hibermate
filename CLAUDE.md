@@ -47,7 +47,7 @@ The full spec, kept verbatim, is in [docs/SPEC.md](docs/SPEC.md). Its Appendix A
 - In this zsh, a bare `log` is a shell builtin. Always use `/usr/bin/log show …` to read Hibermate's os_log.
 - The app opts out of App Nap for its whole lifetime. Otherwise, with the lid closed, its heartbeat timer gets throttled and the helper's dead-man switch ends holds early (found on real hardware).
 - `scripts/test.sh` runs the HibermateCore tests (Swift Testing). **Always build outside the repo.** The repo is in iCloud-synced `~/Documents`, so build output gets file-provider xattrs, `codesign` fails, and iCloud uploads the artifacts. Scripts use `~/Library/Caches/hibermate-build`. Xcode's DerivedData already lives in `~/Library`.
-- All logic lives in `Packages/HibermateCore` (pure, with fakes). Real IOKit, ServiceManagement, and XPC code goes in the app and helper targets.
+- All logic lives in `Packages/HibermateCore` (pure, with fakes). The helper links **only** `HibermateHelperKit` (HelperCore, XPC protocol, AtomicFile), so core changes don't change the helper binary. An unsigned helper is pinned to its exact build, and every helper change needs Login Items re-approval. Real IOKit, ServiceManagement, and XPC code goes in the app and helper targets.
 
 ## Distribution
 `scripts/build-dmg.sh` (xcodebuild archive/export + hdiutil) → `Hibermate-<version>.dmg` + SHA-256. Signing and notarization are switched on by env vars; credentials are never committed. A GitHub Actions workflow builds on `v*` tags and attaches the DMG to a **draft** release. Versions are SemVer, set in one place. Sparkle and the Homebrew cask are roadmap items only.
