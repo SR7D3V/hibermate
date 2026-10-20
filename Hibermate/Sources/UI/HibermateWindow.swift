@@ -248,7 +248,7 @@ struct AgentRow: View {
     var body: some View {
         let enabled = controller.enabledIntegrations.contains(integration.id)
         HStack(spacing: 12) {
-            RowIcon(symbol: Theme.agentSymbol(integration.id))
+            RowIcon(symbol: Theme.agentSymbol(integration.id), logo: Theme.agentLogo(integration.id))
             VStack(alignment: .leading, spacing: 2) {
                 Text(integration.displayName)
                 if enabled {

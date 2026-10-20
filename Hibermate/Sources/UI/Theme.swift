@@ -28,7 +28,14 @@ enum Theme {
         }
     }
 
-    /// A generic symbol per tool. No brand logos.
+    /// The tool's logo in the asset catalog (Simple Icons, CC0; see
+    /// docs/THIRD_PARTY.md), or nil to use `agentSymbol`.
+    static func agentLogo(_ id: AgentID) -> String? {
+        let withLogos: Set<String> = ["claude-code", "gemini", "qwen", "copilot", "cursor", "opencode"]
+        return withLogos.contains(id.rawValue) ? "Logo-\(id.rawValue)" : nil
+    }
+
+    /// A generic symbol per tool, used when there's no logo.
     static func agentSymbol(_ id: AgentID) -> String {
         switch id.rawValue {
         case "claude-code": "sparkle"
@@ -115,16 +122,41 @@ struct SettingRow<Trailing: View>: View {
     }
 }
 
-/// A monochrome symbol in a subtle rounded square.
+/// A monochrome symbol or logo in a subtle rounded square.
 struct RowIcon: View {
     let symbol: String
+    var logo: String?
     var size: CGFloat = 30
 
     var body: some View {
         RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
             .fill(Theme.iconFill)
             .frame(width: size, height: size)
-            .overlay(Image(systemName: symbol).font(.system(size: size * 0.46)).foregroundStyle(.secondary))
+            .overlay {
+                if let logo {
+                    Image(logo).resizable().renderingMode(.template).scaledToFit()
+                        .frame(width: size * 0.5, height: size * 0.5)
+                        .foregroundStyle(.primary.opacity(0.85))
+                } else {
+                    Image(systemName: symbol).font(.system(size: size * 0.46)).foregroundStyle(.secondary)
+                }
+            }
+    }
+}
+
+/// A tool's logo (or symbol) at text size, for compact rows.
+struct AgentGlyph: View {
+    let agent: AgentID
+    var size: CGFloat = 16
+
+    var body: some View {
+        if let logo = Theme.agentLogo(agent) {
+            Image(logo).resizable().renderingMode(.template).scaledToFit()
+                .frame(width: size, height: size)
+                .foregroundStyle(.secondary)
+        } else {
+            Image(systemName: Theme.agentSymbol(agent)).foregroundStyle(.secondary)
+        }
     }
 }
 
@@ -229,9 +261,7 @@ struct SessionRowView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: Theme.agentSymbol(row.agent))
-                .foregroundStyle(.secondary)
-                .frame(width: 18)
+            AgentGlyph(agent: row.agent).frame(width: 18)
             VStack(alignment: .leading, spacing: 1) {
                 Text(row.project).fontWeight(.medium).lineLimit(1)
                 Text("\(row.agentName) · \(row.elapsed)").font(.caption).foregroundStyle(.secondary).lineLimit(1)

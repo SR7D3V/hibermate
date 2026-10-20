@@ -120,4 +120,7 @@ Debug builds run with `--dry-run`, which logs every power action instead of perf
 
 ## License
 
+Tool logos come from Simple Icons (CC0) and are trademarks of their owners, used only to identify compatible tools; see [docs/THIRD_PARTY.md](docs/THIRD_PARTY.md).
+
+
 [GPL-3.0](LICENSE)
