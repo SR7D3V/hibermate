@@ -285,3 +285,23 @@ struct PageHeader: View {
         .padding(.bottom, 6)
     }
 }
+
+/// Shows the snapshot's subtitle; during grace it re-renders once a second,
+/// on the second boundary, so the countdown steps through every number.
+struct LiveSubtitle<Content: View>: View {
+    let snapshot: MenuSnapshot
+    @ViewBuilder let content: (String) -> Content
+
+    var body: some View {
+        if let end = snapshot.graceEndsAt {
+            let remaining = end - ProcessInfo.processInfo.systemUptime
+            // Tick just after each whole second so rounding up never wobbles.
+            let phase = remaining - remaining.rounded(.down) + 0.05
+            TimelineView(.periodic(from: Date().addingTimeInterval(phase), by: 1)) { _ in
+                content(AppController.graceSubtitle(remaining: end - ProcessInfo.processInfo.systemUptime))
+            }
+        } else {
+            content(snapshot.subtitle)
+        }
+    }
+}

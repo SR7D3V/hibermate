@@ -33,6 +33,9 @@ struct MenuSnapshot: Equatable {
     var headline = "Starting…"
     /// Short line under the headline in the menu bar panel.
     var subtitle = ""
+    /// While in grace: when it ends, in system uptime. Lets the views count
+    /// down every second between the controller's slower ticks.
+    var graceEndsAt: TimeInterval?
     var thermalLevel: ThermalLevel = .nominal
     /// e.g. "96%" or "Charging"; for the compact chips.
     var batteryShort = ""
@@ -621,7 +624,8 @@ final class AppController: ObservableObject {
                     + (s.timeLeftShort.map { " · \($0) left" } ?? "")
             case .grace(let until):
                 s.icon = .grace; s.headline = "Work finished"
-                s.subtitle = "Normal sleep returns in \(Self.format(max(0, until - now)))"
+                s.graceEndsAt = until
+                s.subtitle = Self.graceSubtitle(remaining: until - now)
             case .idle:
                 if c.holdWanted, let blocker = engine.startBlocker(c, limits: limits) {
                     // An agent is working but the Mac isn't being kept awake: say why.
@@ -656,6 +660,11 @@ final class AppController: ObservableObject {
         }
         if dryRun { s.headline = "[Dry run] " + s.headline }
         return s
+    }
+
+    /// Rounded up, so a 60 s grace reads 60, 59, … 1 and never shows 0 early.
+    static func graceSubtitle(remaining: TimeInterval) -> String {
+        remaining > 0 ? "Normal sleep returns in \(format(remaining.rounded(.up)))" : "Normal sleep returns now"
     }
 
     static func format(_ seconds: TimeInterval) -> String {

@@ -27,7 +27,7 @@ struct MenuPanelView: View {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.headline).font(.body.weight(.semibold))
-                            Text(s.subtitle).font(.callout).foregroundStyle(.secondary).lineLimit(2)
+                            LiveSubtitle(snapshot: s) { Text($0).font(.callout).foregroundStyle(.secondary).lineLimit(2) }
                         }
                         Spacer()
                         Toggle("", isOn: Binding(get: { !s.isPaused },

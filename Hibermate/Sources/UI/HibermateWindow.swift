@@ -97,10 +97,12 @@ struct OverviewPage: View {
         PageHeader(title: "Status", subtitle: s.explanation)
 
         Card {
-            SettingRow(symbol: s.isActive ? "eye" : "moon.zzz", title: s.headline, subtitle: s.subtitle) {
-                Toggle("", isOn: Binding(get: { !s.isPaused },
-                                         set: { $0 ? controller.resume() : controller.pause(for: nil) }))
-                    .toggleStyle(.switch).labelsHidden()
+            LiveSubtitle(snapshot: s) { subtitle in
+                SettingRow(symbol: s.isActive ? "eye" : "moon.zzz", title: s.headline, subtitle: subtitle) {
+                    Toggle("", isOn: Binding(get: { !s.isPaused },
+                                             set: { $0 ? controller.resume() : controller.pause(for: nil) }))
+                        .toggleStyle(.switch).labelsHidden()
+                }
             }
             if s.isActive {
                 RowDivider()
