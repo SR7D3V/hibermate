@@ -2,7 +2,7 @@
 
 Requirement (user, 2026-10-17): Hibermate must work with **any AI agent or LLM in use on the Mac**, not just Claude Code.
 
-Hibermate never makes network requests, not even to localhost. Detection therefore comes from two local sources:
+Agent detection never makes network requests, not even to localhost. (Hibermate's only request is the daily update check; see SPEC A.8.) Detection therefore comes from two local sources:
 
 1. **Hooks.** The tool runs `hibermate-hook <agent>` at lifecycle events. This is precise: start, finish, waiting, ended.
 2. **Activity watching.** Hibermate looks at running processes plus their CPU and **GPU time**. This is best effort and covers tools without hooks, including local LLM runtimes.

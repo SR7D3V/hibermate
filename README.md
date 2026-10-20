@@ -58,7 +58,7 @@ Hibermate refuses to install its helper if it's running from the DMG, Downloads,
 | Hook files Hibermate owns | `~/.copilot/hooks/hibermate.json`, `~/.config/opencode/plugins/hibermate.js` | only for tools you enable |
 | Settings, hook program, session status | `~/Library/Application Support/Hibermate/` | always |
 
-Hibermate makes **no network connections** and has no telemetry. Hooks record only session IDs, process IDs, timestamps, event names, and the project folder name. They never record prompts, code, or transcripts. Logs stay on your Mac (`os_log`).
+Hibermate has **no telemetry**. Its only network connection is the **update check**: about once a day it asks GitHub for the latest release's version number (`hibermate-update.json`), sending nothing about your Mac. You can turn it off in **Settings → General → Check for updates automatically**. Hooks record only session IDs, process IDs, timestamps, event names, and the project folder name. They never record prompts, code, or transcripts. Logs stay on your Mac (`os_log`).
 
 ## Hardware safety
 
@@ -109,7 +109,7 @@ sh uninstall.sh
 ## Roadmap
 
 - Testing on real hardware and an Apple Developer ID–signed, notarized release
-- Automatic updates (Sparkle)
+- In-app download and install of updates (once releases are Developer ID signed; for now Hibermate shows an UPDATE badge that opens the download page)
 - Homebrew cask: `brew install --cask hibermate`
 - More integrations (VS Code agent hooks, Cline, Windsurf, Goose hooks, Antigravity CLI)
 

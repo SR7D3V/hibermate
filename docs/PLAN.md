@@ -155,7 +155,7 @@ The machine is a pure value type, `(State, Event, Environment) → (State, [Effe
 - **Semantics that enforce invariant 2:** `setSleepDisabled(true)` → if no hold is recorded, read the current SleepDisabled and save it as `original` in a root-owned `/Library/Application Support/Hibermate/helper-state.plist`, then set it to 1. `setSleepDisabled(false)` → write back `original` and **never** set 0 unconditionally. If the user already had 1, it stays 1. Then delete the state file, so it exists only while a hold is active.
 - **Dead-man switch:** while a hold is active, if 2 min pass without a heartbeat (the app sends one every 30 s), the helper restores. It also restores immediately when the XPC connection is invalidated (the app crashed or was force-quit) and on SIGTERM (unregistration or uninstall). Timers use the monotonic clock.
 - **Reconciliation:** on helper start, a leftover state file means a hold was interrupted (crash or reboot), so the helper restores and deletes it. On app launch and wake, the app asks the helper to reconcile: if the app isn't holding, the helper restores.
-- The helper has no network entitlement and logs only through `os_log`.
+- The helper never touches the network and logs only through `os_log`. The app's only network request is the daily update check (SPEC A.8).
 
 ## 8. Distribution
 

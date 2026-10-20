@@ -282,3 +282,13 @@ Under the original rule (any assertion blocks sleep), a Mac in a bag could stay 
 If the app crashes, or misses heartbeats for 2 minutes, during a hold, the helper restores `SleepDisabled` (invariant 1). It then **also puts the Mac to sleep**, but only if the lid is closed (read by the helper from the IORegistry) and the app's most recent heartbeat, at most 3 minutes old, reported no external display. Unknown or stale values mean no sleep.
 
 It never sleeps on SIGTERM (uninstall, unregistration, shutdown) or after a normal quit, since no hold is recorded then. Reason: macOS doesn't re-check lid sleep after the restore, so without this a crashed app would leave a Mac in a bag awake. The heartbeat XPC call now carries the external-display reading.
+
+## A.8 Update check (user, 2026-10-21)
+
+Invariant 5 is amended to allow exactly one kind of network request: the update check. Modeled on how Vorssaint signals updates (green dot on the menu bar icon, an UPDATE pill in the panel), but without its in-app installer, which relies on Developer ID signature checks that ad-hoc builds can't provide.
+
+- The app (never the helper or hooks) fetches `https://github.com/SR7D3V/hibermate/releases/latest/download/hibermate-update.json` about 15 s after launch and then at most once every 24 h. GitHub resolves "latest" to the newest *published* release, so drafts and pre-releases never trigger it. Publishing a release is the rollout.
+- The request is an ephemeral, cookie-less, uncached GET with no identifiers. The feed holds only `version` and `minimumSystemVersion`; it's parsed strictly, capped at 16 KB, and anything malformed is ignored.
+- A newer version shows a green dot on the menu bar icon, an UPDATE pill in the panel and a Download button in Settings → General. All of them open `https://github.com/SR7D3V/hibermate/releases/tag/v<version>`, built from the parsed version, never from a URL in the feed. Nothing is downloaded or installed.
+- On by default; "Check for updates automatically" in Settings → General turns it off and clears the indicator. Debug (`--dry-run`) builds don't check automatically.
+- In-app download and install is deferred until releases are Developer ID signed, so the new app's identity can be verified before replacing the old one.

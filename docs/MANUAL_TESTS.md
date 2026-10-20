@@ -98,6 +98,11 @@ Fastest visible check, with no tool settings changed: `scripts/lid-test.sh run -
 - [ ] Battery dropping through the threshold releases the hold. It doesn't re-arm until the lid is opened and the battery is at threshold + 5% or on AC.
 - [ ] Low Power Mode: the hold ends at 30 minutes.
 
+## 5b. Update check
+- [ ] With a published release newer than the installed build, within a day (or with Check Now) a green dot appears on the menu bar icon in light and dark menu bars, the panel shows UPDATE, and both open the release page.
+- [ ] Turning off "Check for updates automatically" clears the indicator, and no request is made (Little Snitch or `nettop -p Hibermate`).
+- [ ] Offline: Check Now shows "Couldn't check for updates"; nothing else changes.
+
 ## 6. Uninstall
 - [ ] In-app Uninstall: every enabled tool's config matches its pre-install backup, the helper is gone (`launchctl print system/com.sr7d3v.hibermate.helper` fails), and both `~/Library/Application Support/Hibermate` and `/Library/Application Support/Hibermate` are gone. `pmset -g` matches the pre-install values.
 - [x] `sh uninstall.sh` on a machine with the app already deleted: the same end state.
