@@ -84,6 +84,11 @@ jobs:
             echo '```'
             echo "Verify with: \`shasum -a 256 Hibermate-$VERSION.dmg\`"
           } > "$RUNNER_TEMP/notes.md"
+          # A release made by hand (e.g. with a locally built DMG) is left alone.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; not replacing it."
+            exit 0
+          fi
           gh release create "$GITHUB_REF_NAME" --draft --title "Hibermate $VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md" \
             "dist/Hibermate-$VERSION.dmg" "dist/Hibermate-$VERSION.dmg.sha256" \
