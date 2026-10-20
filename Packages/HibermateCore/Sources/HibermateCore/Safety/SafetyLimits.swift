@@ -57,6 +57,8 @@ public struct UserSettings: Codable, Equatable, Sendable {
     /// Empty means process watching is off, which is the default.
     public var watchedTools: [String] = []
     public var notificationsEnabled = true
+    /// The once-a-day check for a newer release (see `UpdatePolicy`).
+    public var checkForUpdates = true
 
     public init() {}
 
@@ -73,6 +75,7 @@ public struct UserSettings: Codable, Equatable, Sendable {
         staleWindow = (try? c.decodeIfPresent(TimeInterval.self, forKey: .staleWindow)) ?? d.staleWindow
         watchedTools = (try? c.decodeIfPresent([String].self, forKey: .watchedTools)) ?? d.watchedTools
         notificationsEnabled = (try? c.decodeIfPresent(Bool.self, forKey: .notificationsEnabled)) ?? d.notificationsEnabled
+        checkForUpdates = (try? c.decodeIfPresent(Bool.self, forKey: .checkForUpdates)) ?? d.checkForUpdates
     }
 
     public func effectiveLimits(fanless: Bool) -> EffectiveLimits {
