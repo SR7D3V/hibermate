@@ -32,6 +32,7 @@
     - 3a User's own `SleepDisabled = 1` (set with `sudo pmset -a disablesleep 1` between holds): the next hold recorded 1 as the original (no "set to 1" write); after release (20:12:31), `SleepDisabled` was **still 1**, with no helper write. PASS (invariant 2).
     - 3c Max hold set to 15 min, 17-min generic job, lid open: "maxHoldReached" at 15:03 after hold start; safety log has thermal, battery, lid, and slept=false; restored; with the lid open the latch cleared and a new hold started 3 s later. PASS.
     - 3b Low Power Mode on, 32-min generic job, lid open: "lowPowerModeLimit" at 30:03 after hold start; safety log complete; latch cleared with the lid open; final release after grace. PASS.
+    - 3d Heat test: 15 min of all-core CPU load (one perl busy loop per core), lid closed, on AC, while holding. Thermal pressure stayed **nominal** the whole time (no Hibermate thermal-change log, no thermalmonitord pressure change); no gap in the samples. The thermal releases couldn't be triggered on this Mac (M3 Pro with fans) and are covered by unit tests. Opening the lid during grace correctly cancelled the sleep.
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
