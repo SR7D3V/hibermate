@@ -33,6 +33,9 @@
     - 3c Max hold set to 15 min, 17-min generic job, lid open: "maxHoldReached" at 15:03 after hold start; safety log has thermal, battery, lid, and slept=false; restored; with the lid open the latch cleared and a new hold started 3 s later. PASS.
     - 3b Low Power Mode on, 32-min generic job, lid open: "lowPowerModeLimit" at 30:03 after hold start; safety log complete; latch cleared with the lid open; final release after grace. PASS.
     - 3d Heat test: 15 min of all-core CPU load (one perl busy loop per core), lid closed, on AC, while holding. Thermal pressure stayed **nominal** the whole time (no Hibermate thermal-change log, no thermalmonitord pressure change); no gap in the samples. The thermal releases couldn't be triggered on this Mac (M3 Pro with fans) and are covered by unit tests. Opening the lid during grace correctly cancelled the sleep.
+    - 3e part 1, helper killed mid-hold (`sudo kill -9`): launchd restarted it (runs=2, Killed: 9); the new helper found the hold record and restored `SleepDisabled 0` at startup; the app's next heartbeat (26 s later) re-applied the hold. PASS (reconciliation).
+    - **Notifications don't appear on ad-hoc builds:** `requestAuthorization` fails with "Notifications are not allowed for this application" (UNErrorDomain 1); status denied; no entry in System Settings → Notifications. The notifications were submitted at the right times (max hold 20:31, Low Power Mode 21:08) but never shown. Needs a fallback for unsigned builds.
+    - 3g External display: skipped (no monitor available).
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
