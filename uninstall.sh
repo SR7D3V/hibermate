@@ -12,7 +12,7 @@
 #   3. Stops and removes the privileged helper.
 #   4. Removes Hibermate's hook entries from every AI tool's settings
 #      (each changed file is backed up next to it first).
-#   5. Deletes ~/Library/Application Support/Hibermate.
+#   5. Deletes ~/Library/Application Support/Hibermate and Hibermate's preferences.
 #   6. Optionally moves /Applications/Hibermate.app to the Trash.
 set -u
 
@@ -86,9 +86,12 @@ else
     echo "(Leftover entries are harmless: they exit silently when Hibermate is gone.)"
 fi
 
-# 5. Delete Hibermate's own data.
+# 5. Delete Hibermate's own data and preferences.
 if [ -d "$USER_DIR" ]; then
     /bin/rm -rf "$USER_DIR" && echo "Deleted $USER_DIR"
+fi
+if /usr/bin/defaults read com.sr7d3v.hibermate >/dev/null 2>&1; then
+    /usr/bin/defaults delete com.sr7d3v.hibermate && echo "Deleted Hibermate's preferences"
 fi
 
 # 6. The app itself.

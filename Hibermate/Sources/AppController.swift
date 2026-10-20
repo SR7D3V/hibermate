@@ -366,6 +366,8 @@ final class AppController: ObservableObject {
                         failures.append("Helper: \(error.localizedDescription)")
                     }
                 }
+                // Hibermate's own preferences (~/Library/Preferences/com.sr7d3v.hibermate.plist).
+                UserDefaults.standard.removePersistentDomain(forName: HelperIdentity.appBundleID)
                 do { try FileManager.default.removeItem(at: self.paths.supportDirectory) } catch CocoaError.fileNoSuchFile {
                 } catch {
                     failures.append("Could not delete \(self.paths.supportDirectory.path): \(error.localizedDescription)")
