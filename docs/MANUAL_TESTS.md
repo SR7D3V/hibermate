@@ -28,6 +28,8 @@
     - 2e Queued prompts (3 prompts queued in one Claude Code session): the session stayed "holding" continuously (working ↔ background) until all were done, then went idle. PASS at the session level. The Mac-level hold wasn't exercised because the battery was at 19%.
     - Bonus, battery threshold: at 19% on battery (limit 20%), Hibermate correctly **refused to start** a hold. Found a UX gap: the menu said "No agents working". Fixed: it now says why it isn't keeping the Mac awake (`StartBlocker`).
     - Note: Hibermate was quit normally (⌘Q) at 01:05 and, with launch at login off, didn't come back. Not a crash.
+  - **Round 3:**
+    - 3a User's own `SleepDisabled = 1` (set with `sudo pmset -a disablesleep 1` between holds): the next hold recorded 1 as the original (no "set to 1" write); after release (20:12:31), `SleepDisabled` was **still 1**, with no helper write. PASS (invariant 2).
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
