@@ -1,5 +1,7 @@
 # Builds the DMG when a version tag (v*) is pushed and attaches it to a
 # DRAFT GitHub Release, so it can be reviewed before publishing.
+# Publishing the release is what rolls out the update: installed copies see
+# its hibermate-update.json within a day and show the UPDATE indicator.
 name: Release
 
 on:
@@ -84,4 +86,5 @@ jobs:
           } > "$RUNNER_TEMP/notes.md"
           gh release create "$GITHUB_REF_NAME" --draft --title "Hibermate $VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md" \
-            "dist/Hibermate-$VERSION.dmg" "dist/Hibermate-$VERSION.dmg.sha256"
+            "dist/Hibermate-$VERSION.dmg" "dist/Hibermate-$VERSION.dmg.sha256" \
+            dist/hibermate-update.json

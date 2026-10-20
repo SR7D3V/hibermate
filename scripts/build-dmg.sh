@@ -136,6 +136,11 @@ if [ -n "$SIGN_IDENTITY" ]; then
 fi
 
 (cd "$DIST_DIR" && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
+# The update feed the app checks (UpdatePolicy.feedURL): attached to every
+# release, so GitHub's "latest" link always points at the newest published one.
+MIN_MACOS="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")"
+printf '{"version":"%s","minimumSystemVersion":"%s"}\n' "$VERSION" "$MIN_MACOS" > "$DIST_DIR/hibermate-update.json"
 echo "==> Done"
 echo "    $DMG"
 echo "    SHA-256: $(cut -d' ' -f1 "$DMG.sha256")"
+echo "    $DIST_DIR/hibermate-update.json"
