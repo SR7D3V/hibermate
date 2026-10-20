@@ -110,6 +110,9 @@ struct MenuContent: View {
         Text(s.battery)
         if let left = s.timeRemaining { Text(left) }
         ForEach(s.warnings, id: \.self) { Text("⚠︎ \($0)") }
+        if let last = s.recentReleases.first, last.date.timeIntervalSinceNow > -24 * 3600 {
+            Text("Last safety release \(last.date.formatted(date: .omitted, time: .shortened)): \(last.reason.shortLabel)")
+        }
         Divider()
         Button("Release now") { controller.releaseNow() }
             .disabled(!s.isActive)

@@ -114,3 +114,33 @@ struct ModelCoolingTests {
         #expect(ModelCooling.fanless.isDisjoint(with: ModelCooling.appleSiliconWithFans))
     }
 }
+
+@Suite("Safety release history")
+struct SafetyReleaseHistoryTests {
+    @Test func keepsNewestFirstPersistsAndCaps() throws {
+        let file = makeTempDir().appendingPathComponent("safety-releases.json")
+        var h = SafetyReleaseHistory(file: file)
+        for i in 0..<25 {
+            h.add(SafetyReleaseRecord(date: Date(timeIntervalSince1970: Double(i) * 60), reason: .maxHoldReached, slept: false))
+        }
+        #expect(h.records.count == SafetyReleaseHistory.capacity)
+        #expect(h.records.first?.date == Date(timeIntervalSince1970: 24 * 60), "newest first")
+        let reloaded = SafetyReleaseHistory(file: file)
+        #expect(reloaded.records == h.records)
+    }
+
+    @Test func acknowledgement() {
+        var h = SafetyReleaseHistory(file: nil)
+        h.add(SafetyReleaseRecord(date: Date(timeIntervalSince1970: 1), reason: .batteryLow, slept: true))
+        h.add(SafetyReleaseRecord(date: Date(timeIntervalSince1970: 2), reason: .thermalSerious, slept: false))
+        #expect(h.unacknowledged.map(\.reason) == [.batteryLow, .thermalSerious], "oldest first")
+        h.acknowledgeAll()
+        #expect(h.unacknowledged.isEmpty)
+    }
+
+    @Test func corruptFileStartsEmpty() throws {
+        let file = makeTempDir().appendingPathComponent("safety-releases.json")
+        try Data("nope".utf8).write(to: file)
+        #expect(SafetyReleaseHistory(file: file).records.isEmpty)
+    }
+}

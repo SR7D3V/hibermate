@@ -64,6 +64,19 @@ public enum ReleaseReason: String, Sendable, Equatable, Codable {
         }
     }
 
+    /// A few words for the menu.
+    public var shortLabel: String {
+        switch self {
+        case .thermalCritical, .thermalSerious: "too hot"
+        case .thermalSustainedFair: "warm for too long"
+        case .batteryLow: "battery low"
+        case .powerUnknown: "battery unreadable"
+        case .lowPowerModeLimit: "Low Power Mode limit"
+        case .maxHoldReached: "maximum hold time"
+        default: rawValue
+        }
+    }
+
     /// Text for the local notification posted on a safety release.
     public func notificationBody(slept: Bool) -> String {
         let outcome = slept ? "Hibermate put your Mac to sleep" : "Hibermate stopped keeping your Mac awake"

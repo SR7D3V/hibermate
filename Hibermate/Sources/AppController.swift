@@ -24,6 +24,10 @@ struct MenuSnapshot: Equatable {
     var display = ""
     var otherApps = ""
     var warnings: [String] = []
+    /// Newest first, for the window; the menu shows only the latest one.
+    var recentReleases: [SafetyReleaseRecord] = []
+    /// nil = not checked yet.
+    var notificationsAllowed: Bool?
     var isActive = false
     var isPaused = false
 }
@@ -41,6 +45,9 @@ final class AppController: ObservableObject {
     @Published private(set) var snapshot = MenuSnapshot()
     @Published private(set) var setup: SetupState = .helperNotRegistered
     @Published var settings: UserSettings { didSet { saveSettings() } }
+    private var history: SafetyReleaseHistory
+    private var notificationsAllowed: Bool?
+    private var lastNotificationCheck: TimeInterval = -.infinity
 
     let dryRun: Bool
     let paths = HibermatePaths()
@@ -70,6 +77,7 @@ final class AppController: ObservableObject {
         self.store = SessionStore(paths: paths)
         self.fanless = ModelCooling.isFanless(LiveSensors().modelIdentifier())
         self.settings = Self.loadSettings(paths: paths)
+        self.history = SafetyReleaseHistory(file: HibermatePaths().safetyReleasesFile)
         self.integrations = IntegrationCatalog.all(paths: paths, dryRun: dryRun)
         try? FileManager.default.createDirectory(at: paths.sessionsDirectory, withIntermediateDirectories: true,
                                                  attributes: [.posixPermissions: 0o700])
@@ -223,6 +231,16 @@ final class AppController: ObservableObject {
         }
         if c.lidClosed != lastConditions.lidClosed {
             appLog.notice("Lid closed: \(String(describing: c.lidClosed), privacy: .public)")
+            if c.lidClosed == false { showWhileAwayAlertIfNeeded() }
+        }
+        // Re-check notification permission every 5 min (the user may change it in System Settings).
+        if now - lastNotificationCheck >= 300 {
+            lastNotificationCheck = now
+            Notifier.isAllowed { [weak self] allowed in
+                guard let self, self.notificationsAllowed != allowed else { return }
+                self.notificationsAllowed = allowed
+                appLog.notice("Notifications allowed: \(allowed, privacy: .public)")
+            }
         }
         if c.power != lastConditions.power, case .battery = c.power, case .battery = lastConditions.power {
             // Battery percentage changes are too frequent to log.
@@ -348,7 +366,7 @@ final class AppController: ObservableObject {
                 next()
             case .notifySafetyRelease(let reason, let slept):
                 logSafetyRelease(reason, slept: slept)
-                if settings.notificationsEnabled { Notifier.post(reason, slept: slept) }
+                recordSafetyRelease(reason, slept: slept)
                 next()
             }
         }
@@ -375,6 +393,40 @@ final class AppController: ObservableObject {
             appLog.notice("Session \(key, privacy: .public): ended")
         }
         lastSessionStatus = current.filter { !$0.value.hasPrefix("dead") }
+    }
+
+    // MARK: - Safety release history
+
+    /// Every safety release is kept in a short local history. If macOS allows
+    /// notifications, one is posted. Otherwise (e.g. unsigned builds) the user is
+    /// told with a "While you were away" alert the next time the lid opens, or
+    /// right away if it's already open.
+    private func recordSafetyRelease(_ reason: ReleaseReason, slept: Bool) {
+        let notify = settings.notificationsEnabled && notificationsAllowed == true
+        history.add(SafetyReleaseRecord(date: Date(), reason: reason, slept: slept, acknowledged: notify))
+        if notify {
+            Notifier.post(reason, slept: slept)
+        } else if lastConditions.lidClosed == false, !slept {
+            showWhileAwayAlertIfNeeded()
+        }
+    }
+
+    private func showWhileAwayAlertIfNeeded() {
+        let pending = history.unacknowledged
+        guard !pending.isEmpty else { return }
+        history.acknowledgeAll()
+        let time = DateFormatter()
+        time.timeStyle = .short
+        let alert = NSAlert()
+        alert.messageText = pending.count == 1 ? "While you were away" : "While you were away (\(pending.count) safety releases)"
+        alert.informativeText = pending.map { "\(time.string(from: $0.date)) — \($0.summary)" }.joined(separator: "\n")
+        alert.addButton(withTitle: "OK")
+        if notificationsAllowed == false {
+            alert.informativeText += "\n\nTip: turn on Hibermate in System Settings → Notifications to be notified as it happens."
+            alert.addButton(withTitle: "Open Notification Settings")
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertSecondButtonReturn { Notifier.openSettings() }
     }
 
     /// Invariant 3 kept the Mac awake after a release: record which condition did.
@@ -450,6 +502,8 @@ final class AppController: ObservableObject {
         }
 
         if sensors.batteryNeedsService() { s.warnings.append("Battery service recommended") }
+        s.recentReleases = Array(history.records.prefix(5))
+        s.notificationsAllowed = notificationsAllowed
         if let latched = engine.latchedReason {
             s.warnings.append("Paused for safety: \(latched.notificationBody(slept: false)) Open the lid to re-arm.")
         }

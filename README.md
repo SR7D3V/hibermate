@@ -84,7 +84,7 @@ No output, or `SleepDisabled 0`, means normal sleep. When no agent is working, t
 
 - **Unsigned builds:** macOS asks you to approve the first launch (see Install). The helper accepts calls only from `/Applications/Hibermate.app`, but without an Apple Developer ID it can't cryptographically pin the caller's developer identity.
 - **Updating unsigned builds:** macOS pins an unsigned helper to its exact build. After an update that changes the helper, Hibermate re-registers it automatically, and you may need to approve it in Login Items again. A Developer ID–signed release would remove this step.
-- **No notifications on unsigned builds:** macOS doesn't allow notifications for apps without a Developer ID signature. Safety releases are still logged and shown in Hibermate's window.
+- **Notifications on unsigned builds:** macOS doesn't ask for permission, so Hibermate's notifications are off at first. Turn them on in **System Settings → Notifications → Hibermate** (the Hibermate window has a button for this). Until then, every safety release is still listed under *Recent safety releases*, and a "While you were away" alert appears when you next open the lid.
 - **Turning Hibermate off in Login Items quits the app** (that's macOS behavior). After re-approving it there, open Hibermate again from Applications, or turn on *Launch at login* in Settings.
 - **Cloud agents without hooks** (waiting on a remote model) use almost no CPU, so activity watching may miss them. Use a hook integration or the generic command instead.
 - Some tool details (payload fields, LM Studio's process names, Gemini CLI vs. Antigravity CLI) are still being verified; see [docs/AGENTS.md](docs/AGENTS.md).

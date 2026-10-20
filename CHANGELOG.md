@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Recent safety releases are listed in the Hibermate window and menu. If notifications are off, a "While you were away" alert explains any safety release the next time you open the lid, with a button to turn notifications on.
 - If the app crashes or stops responding during a hold with the lid closed, the helper restores the sleep setting and also puts the Mac to sleep (only when no external display is connected).
 - Project spec, implementation plan, and contributor notes.
 - GPL-3.0 license.

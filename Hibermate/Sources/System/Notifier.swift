@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import HibermateCore
 import UserNotifications
@@ -20,6 +21,20 @@ enum Notifier {
         UNUserNotificationCenter.current().getNotificationSettings { s in
             appLog.notice("Notification settings: authorization \(s.authorizationStatus.rawValue, privacy: .public), alerts \(s.alertSetting.rawValue, privacy: .public)")
         }
+    }
+
+    /// Whether macOS currently lets Hibermate show notifications. Unsigned
+    /// builds are never prompted; the user has to turn it on in System Settings.
+    static func isAllowed(_ completion: @escaping @MainActor (Bool) -> Void) {
+        UNUserNotificationCenter.current().getNotificationSettings { s in
+            let allowed = s.authorizationStatus == .authorized || s.authorizationStatus == .provisional
+            DispatchQueue.main.async { MainActor.assumeIsolated { completion(allowed) } }
+        }
+    }
+
+    static func openSettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(HelperIdentity.appBundleID)")!
+        NSWorkspace.shared.open(url)
     }
 
     static func post(_ reason: ReleaseReason, slept: Bool) {

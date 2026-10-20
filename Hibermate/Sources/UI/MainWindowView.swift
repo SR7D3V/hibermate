@@ -44,6 +44,26 @@ struct MainWindowView: View {
                     row("moon.zzz", s.otherApps)
                     if let left = s.timeRemaining { row("timer", left) }
                 }
+                card("Recent safety releases") {
+                    if s.recentReleases.isEmpty {
+                        Text("None. Hibermate hasn't had to stop early to protect your Mac.")
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        ForEach(s.recentReleases) { r in
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(r.date.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                                Text(r.summary).fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                    if s.notificationsAllowed == false {
+                        Label("Notifications are off, so you won't be told as it happens.", systemImage: "bell.slash")
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Turn on notifications…") { Notifier.openSettings() }
+                    }
+                }
                 card("Watching") {
                     let enabled = controller.integrations.filter { $0.isEnabled() }.map(\.displayName)
                     let watched = ActivityCatalog.tools.filter { controller.settings.watchedTools.contains($0.id.rawValue) }
