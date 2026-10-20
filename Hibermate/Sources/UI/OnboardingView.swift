@@ -2,115 +2,91 @@ import AppKit
 import HibermateCore
 import SwiftUI
 
-/// First-run setup. It explains exactly what changes on the system and asks
-/// for consent to each part separately.
+/// First-run setup in three short steps: what Hibermate does, the helper, and
+/// which AI tools to watch. Each step asks for consent to one change.
 struct OnboardingView: View {
     @ObservedObject var controller: AppController
-    @State private var integrationError: String?
-    @State private var refresh = 0
+    @Environment(\.dismiss) private var dismiss
+    @State private var step = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Close the lid. Your agents keep working.").font(.title2.bold())
-            Text("Hibermate keeps your Mac awake with the lid closed only while an AI agent is working, then lets it sleep. When nothing is working, your Mac behaves exactly as if Hibermate weren't installed.")
-                .fixedSize(horizontal: false, vertical: true)
-
-            GroupBox("Hardware safety (always on)") {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("• Releases immediately if macOS reports serious or critical heat, and sooner on fanless Macs.")
-                    Text("• Releases when the battery falls to \(controller.settings.batteryThreshold)%, and limits holds in Low Power Mode.")
-                    Text("• Never holds longer than the maximum (default 4 h, hard limit 12 h).")
-                    Text("• If Hibermate crashes, normal sleep returns within 2 minutes.")
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            GroupBox("Step 1 — Sleep helper") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("A small privileged helper is needed to keep the Mac awake with the lid closed (it runs `pmset disablesleep`). It can only turn that setting on, restore your original value, or put the Mac to sleep.")
-                        .fixedSize(horizontal: false, vertical: true)
-                    helperStep
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            GroupBox("Step 2 — Choose which AI tools to watch") {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(controller.integrations, id: \.id) { integration in
-                        integrationRow(integration)
-                    }
-                    Text("Local models (Ollama, llama.cpp, MLX, LM Studio…) and tools without hooks can be watched by activity in Settings.")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let integrationError {
-                        Text(integrationError).foregroundStyle(.red).font(.caption)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    switch step {
+                    case 0: welcome
+                    case 1: helper
+                    default: tools
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .id(refresh)
+                .padding(28)
             }
-        }
-        .padding(24)
-        .frame(width: 600)
-    }
 
-    @ViewBuilder private var helperStep: some View {
-        switch controller.setup {
-        case .wrongLocation:
-            Text("Hibermate is running from \(Bundle.main.bundleURL.deletingLastPathComponent().path). Please drag it into your Applications folder and open it from there.")
-                .foregroundStyle(.orange)
-            Button("Quit") { NSApp.terminate(nil) }
-        case .helperNotRegistered:
-            Button("Install helper") { controller.registerHelper() }
-        case .helperNeedsApproval:
-            Text("macOS needs your approval: turn on Hibermate in System Settings → General → Login Items & Extensions. Until then, Hibermate doesn't keep anything awake.")
-                .fixedSize(horizontal: false, vertical: true)
-            Button("Open Login Items Settings") { HelperRegistration.openLoginItemsSettings() }
-        case .helperUnreachable:
-            Text("The helper is installed but not responding. After an update, macOS needs you to approve it again: in Login Items, turn Hibermate on (or off and back on). If that doesn't help, reinstall it.")
-                .fixedSize(horizontal: false, vertical: true)
+            Divider()
             HStack {
-                Button("Open Login Items Settings") { HelperRegistration.openLoginItemsSettings() }
-                Button("Reinstall helper") { controller.reinstallHelper() }
-            }
-        case .ready:
-            Label(controller.dryRun ? "Dry run: no helper needed" : "Helper installed and approved", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-        }
-    }
-
-    private func integrationRow(_ integration: AgentIntegration) -> some View {
-        let enabled = integration.isEnabled()
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(integration.displayName).bold()
-                if !integration.isToolPresent { Text("not found on this Mac").font(.caption).foregroundStyle(.secondary) }
+                HStack(spacing: 6) {
+                    ForEach(0..<3) { i in
+                        Capsule().fill(i == step ? Color.primary : Color.secondary.opacity(0.3))
+                            .frame(width: i == step ? 18 : 7, height: 7)
+                    }
+                }
+                .animation(.easeInOut(duration: 0.2), value: step)
                 Spacer()
-                Button(enabled ? "Disable" : "Enable") {
-                    do {
-                        if enabled { try integration.disable() } else { try integration.enable() }
-                        integrationError = nil
-                    } catch {
-                        integrationError = "\(integration.displayName): \(Self.describe(error))"
-                    }
-                    refresh += 1
+                if step > 0 { Button("Back") { step -= 1 } }
+                Button(step == 2 ? "Done" : "Continue") {
+                    if step == 2 { dismiss() } else { step += 1 }
                 }
-                .disabled(!integration.isToolPresent && !enabled)
+                .keyboardShortcut(.defaultAction)
+                .disabled(step == 1 && controller.setup == .wrongLocation)
             }
-            Text(integration.changeSummary).font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            .padding(16)
+        }
+        .frame(width: 540, height: 520)
+        .onAppear { controller.refreshIntegrations() }
+    }
+
+    private var welcome: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack { Spacer(); Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 88, height: 88); Spacer() }
+            PageHeader(title: "Close the lid. Your agents keep working.",
+                       subtitle: "Hibermate keeps your Mac awake with the lid closed only while an AI tool is working, then lets it sleep.")
+            Card {
+                SettingRow(symbol: "thermometer.medium", title: "Stops if the Mac gets hot") { EmptyView() }
+                RowDivider(inset: 58)
+                SettingRow(symbol: "battery.25percent", title: "Stops when the battery runs low") { EmptyView() }
+                RowDivider(inset: 58)
+                SettingRow(symbol: "timer", title: "Never holds longer than your limit (default 4 h)") { EmptyView() }
+                RowDivider(inset: 58)
+                SettingRow(symbol: "arrow.uturn.backward", title: "If anything crashes, normal sleep returns within 2 minutes") { EmptyView() }
+            }
         }
     }
 
-    static func describe(_ error: Error) -> String {
-        switch error as? ClaudeSettingsError {
-        case .corrupt(let why): "Your settings file isn't valid JSON (\(why)). Hibermate won't edit it; please fix it first."
-        case .unexpectedShape(let why): "Your settings file has an unexpected layout (\(why)). Hibermate won't edit it."
-        case .claudeDirectoryMissing: "The tool's settings folder wasn't found."
-        case .concurrentModification: "The settings file changed while Hibermate was editing it. Please try again."
-        case .io(let why): why
-        case nil: error.localizedDescription
+    private var helper: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            PageHeader(title: "Install the sleep helper",
+                       subtitle: "Keeping a Mac awake with the lid closed needs a small system helper. It can only turn lid-closed sleep off, restore your original setting, or put the Mac to sleep.")
+            Card { HelperStatusRow(controller: controller) }
+        }
+    }
+
+    private var tools: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            PageHeader(title: "Choose your AI tools",
+                       subtitle: "Turn on the tools you use. You can change this any time in Settings → AI tools.")
+            let present = controller.integrations.filter { $0.isToolPresent || controller.enabledIntegrations.contains($0.id) }
+            Card {
+                if present.isEmpty {
+                    Text("No supported AI tools found on this Mac yet.").foregroundStyle(.secondary).padding(16)
+                }
+                ForEach(Array(present.enumerated()), id: \.element.id) { i, integration in
+                    if i > 0 { RowDivider(inset: 58) }
+                    AgentRow(integration: integration, controller: controller)
+                }
+            }
+            if let error = controller.integrationError {
+                Text(error).foregroundStyle(.red).font(.callout)
+            }
         }
     }
 }

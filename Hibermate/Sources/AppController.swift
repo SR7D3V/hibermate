@@ -7,13 +7,36 @@ struct MenuSnapshot: Equatable {
     enum Icon: Equatable { case idle, holding, grace, warning, setupNeeded }
 
     struct SessionRow: Equatable, Identifiable {
+        enum Status: Equatable { case working, waiting, background, idle, timedOut }
         var id: String
-        var title: String
-        var detail: String
+        var agent: AgentID
+        var agentName: String
+        var project: String
+        var status: Status
+        var elapsed: String
+        var holds: Bool
+
+        var title: String { "\(project) — \(statusText.lowercased())" }
+        var detail: String { "\(agentName) · \(elapsed)" }
+        var statusText: String {
+            switch status {
+            case .working: "Working"
+            case .waiting: "Waiting for you"
+            case .background: "Background"
+            case .idle: "Idle"
+            case .timedOut: "Waiting (timed out)"
+            }
+        }
     }
 
     var icon: Icon = .idle
     var headline = "Starting…"
+    /// Short line under the headline in the menu bar panel.
+    var subtitle = ""
+    var thermalLevel: ThermalLevel = .nominal
+    /// e.g. "96%" or "Charging"; for the compact chips.
+    var batteryShort = ""
+    var timeLeftShort: String?
     /// One plain sentence explaining the headline, for the main window.
     var explanation = ""
     var sessions: [SessionRow] = []
@@ -32,6 +55,21 @@ struct MenuSnapshot: Equatable {
     var isPaused = false
 }
 
+/// The pages of Hibermate's window.
+enum MainPage: String, CaseIterable, Identifiable, Hashable {
+    case overview, agents, safety, general, about
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .overview: "Overview"
+        case .agents: "AI Tools"
+        case .safety: "Safety"
+        case .general: "General"
+        case .about: "About"
+        }
+    }
+}
+
 enum SetupState: Equatable {
     case wrongLocation
     case helperNotRegistered
@@ -45,6 +83,10 @@ final class AppController: ObservableObject {
     @Published private(set) var snapshot = MenuSnapshot()
     @Published private(set) var setup: SetupState = .helperNotRegistered
     @Published var settings: UserSettings { didSet { saveSettings() } }
+    /// The page Hibermate's window shows; the menu bar panel can jump to one.
+    @Published var page: MainPage = .overview
+    @Published private(set) var enabledIntegrations: Set<AgentID> = []
+    @Published var integrationError: String?
     private var history: SafetyReleaseHistory
     private var notificationsAllowed: Bool?
     private var lastNotificationCheck: TimeInterval = -.infinity
@@ -89,6 +131,7 @@ final class AppController: ObservableObject {
 
     func start() {
         refreshSetup()
+        refreshIntegrations()
         if !dryRun { HookBinaryInstaller.refreshIfOutdated(paths: paths) }
         // Re-registering after an update happens in pingHelper(), and only if
         // the helper doesn't respond, so an approval that's still valid is
@@ -266,7 +309,11 @@ final class AppController: ObservableObject {
     // MARK: - Commands
 
     func releaseNow() { command(.releaseNow) }
-    func pauseOneHour() { command(.pause(until: ProcessInfo.processInfo.systemUptime + 3600)) }
+    func pauseOneHour() { pause(for: 3600) }
+    /// nil pauses until the user resumes.
+    func pause(for duration: TimeInterval?) {
+        command(.pause(until: duration.map { ProcessInfo.processInfo.systemUptime + $0 } ?? .infinity))
+    }
     func resume() { command(.resume) }
 
     private func command(_ cmd: UserCommand) {
@@ -396,6 +443,33 @@ final class AppController: ObservableObject {
         lastSessionStatus = current.filter { !$0.value.hasPrefix("dead") }
     }
 
+    // MARK: - Integrations
+
+    func refreshIntegrations() {
+        enabledIntegrations = Set(integrations.filter { $0.isEnabled() }.map(\.id))
+    }
+
+    func setIntegration(_ integration: AgentIntegration, enabled: Bool) {
+        do {
+            if enabled { try integration.enable() } else { try integration.disable() }
+            integrationError = nil
+        } catch {
+            integrationError = "\(integration.displayName): \(Self.describe(error))"
+        }
+        refreshIntegrations()
+    }
+
+    static func describe(_ error: Error) -> String {
+        switch error as? ClaudeSettingsError {
+        case .corrupt(let why): "the settings file isn't valid JSON (\(why)). Hibermate won't edit it; please fix it first."
+        case .unexpectedShape(let why): "the settings file has an unexpected layout (\(why)). Hibermate won't edit it."
+        case .claudeDirectoryMissing: "the tool's settings folder wasn't found."
+        case .concurrentModification: "the settings file changed while Hibermate was editing it. Please try again."
+        case .io(let why): why
+        case nil: error.localizedDescription
+        }
+    }
+
     // MARK: - Safety release history
 
     /// Every safety release is kept in a short local history. If macOS allows
@@ -486,20 +560,30 @@ final class AppController: ObservableObject {
         }
 
         let wall = Date().timeIntervalSince1970
-        s.sessions = sessions.sorted { $0.record.key < $1.record.key }.map { e in
+        s.sessions = sessions.map { e in
             let r = e.record
             let agent = integrations.first { $0.id == r.agent }?.displayName
-                ?? ActivityCatalog.tools.first { $0.id == r.agent }.map { "\($0.displayName) (activity)" }
-                ?? r.agent.rawValue
-            let state: String = switch (r.state, e.verdict) {
-            case (_, .notHolding(.permissionWaitExpired)): "waiting for you (timed out)"
-            case (.working, _): "working"
-            case (.waiting, _): "waiting for you"
-            case (.background, _): "background tasks"
-            case (.idle, _): "idle"
+                ?? ActivityCatalog.tools.first { $0.id == r.agent }?.displayName
+                ?? (r.agent == .generic ? "Script" : r.agent.rawValue)
+            let status: MenuSnapshot.SessionRow.Status = switch (r.state, e.verdict) {
+            case (_, .notHolding(.permissionWaitExpired)): .timedOut
+            case (.working, _): .working
+            case (.waiting, _): .waiting
+            case (.background, _): .background
+            case (.idle, _): .idle
             }
-            return .init(id: r.key, title: "\(r.project ?? agent) — \(state)",
-                         detail: "\(agent) · \(Self.format(max(0, wall - r.stateSince)))")
+            return .init(id: r.key, agent: r.agent, agentName: agent, project: r.project ?? agent, status: status,
+                         elapsed: Self.format(max(0, wall - r.stateSince)), holds: e.holds)
+        }
+        .sorted { ($0.holds ? 0 : 1, $0.project) < ($1.holds ? 0 : 1, $1.project) }
+        s.thermalLevel = c.thermal
+        s.batteryShort = switch c.power {
+        case .ac: "Power"
+        case .battery(let p): "\(p)%"
+        case .unknown: "—"
+        }
+        if let left = engine.timeRemaining(now: now, conditions: c, limits: limits) {
+            s.timeLeftShort = Self.format(left)
         }
 
         if sensors.batteryNeedsService() { s.warnings.append("Battery service recommended") }
@@ -511,31 +595,43 @@ final class AppController: ObservableObject {
 
         switch setup {
         case .wrongLocation:
-            s.icon = .setupNeeded; s.headline = "Move Hibermate to Applications"
+            s.icon = .setupNeeded; s.headline = "Move to Applications"
+            s.subtitle = "Hibermate must run from Applications"
         case .helperNotRegistered:
             s.icon = .setupNeeded; s.headline = "Setup needed"
+            s.subtitle = "Install the sleep helper to start"
         case .helperNeedsApproval:
-            s.icon = .setupNeeded; s.headline = "Approve Hibermate in Login Items"
+            s.icon = .setupNeeded; s.headline = "Approval needed"
+            s.subtitle = "Allow Hibermate in Login Items"
         case .helperUnreachable:
             s.icon = .warning; s.headline = "Helper not responding"
+            s.subtitle = "Reinstall it from Hibermate's window"
         case .ready:
+            let working = sessions.filter(\.holds).count
             switch engine.phase {
             case .holding:
-                s.icon = .holding; s.headline = "Keeping your Mac awake — safe to close the lid"
+                s.icon = .holding; s.headline = "Keeping your Mac awake"
+                s.subtitle = (working == 1 ? "1 session working" : "\(working) sessions working")
+                    + (s.timeLeftShort.map { " · \($0) left" } ?? "")
             case .grace(let until):
-                s.icon = .grace; s.headline = "Work finished — sleeping in \(Self.format(max(0, until - now)))"
+                s.icon = .grace; s.headline = "Work finished"
+                s.subtitle = "Normal sleep returns in \(Self.format(max(0, until - now)))"
             case .idle:
                 if c.holdWanted, let blocker = engine.startBlocker(c, limits: limits) {
                     // An agent is working but the Mac isn't being kept awake: say why.
                     s.icon = .warning
-                    s.headline = "Agent working, but not keeping the Mac awake"
+                    s.headline = "Not keeping the Mac awake"
+                    s.subtitle = blocker.explanation.prefix(1).uppercased() + blocker.explanation.dropFirst()
                     s.warnings.append("Not keeping the Mac awake: \(blocker.explanation).")
                 } else if engine.latchedReason != nil {
                     s.icon = .warning; s.headline = "Released for safety"
+                    s.subtitle = "Open the lid to re-arm"
                 } else if s.isPaused {
                     s.icon = .idle; s.headline = "Paused"
+                    s.subtitle = "Your Mac sleeps normally"
                 } else {
-                    s.icon = .idle; s.headline = "No agents working"
+                    s.icon = .idle; s.headline = "Sleeping normally"
+                    s.subtitle = "No AI tools are working"
                 }
             }
         }

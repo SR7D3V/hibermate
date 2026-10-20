@@ -8,26 +8,22 @@ struct HibermateApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuContent(controller: delegate.controller)
+            MenuPanelView(controller: delegate.controller)
         } label: {
             MenuBarLabel(controller: delegate.controller)
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
 
         Window("Hibermate", id: "main") {
-            MainWindowView(controller: delegate.controller)
+            HibermateWindow(controller: delegate.controller)
         }
-        .defaultSize(width: 520, height: 620)
-
-        Window("Hibermate Settings", id: "settings") {
-            SettingsView(controller: delegate.controller)
-        }
-        .windowResizability(.contentSize)
+        .defaultSize(width: 760, height: 560)
 
         Window("Welcome to Hibermate", id: "onboarding") {
             OnboardingView(controller: delegate.controller)
         }
         .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
     }
 }
 
@@ -83,55 +79,6 @@ struct MenuBarIcon: View {
         case .warning: Image(systemName: "exclamationmark.triangle")
         case .setupNeeded: Image(systemName: "gearshape")
         }
-    }
-}
-
-struct MenuContent: View {
-    @ObservedObject var controller: AppController
-    @Environment(\.openWindow) private var openWindow
-
-    var body: some View {
-        let s = controller.snapshot
-        Text(s.headline)
-        Button("Open Hibermate…") { show("main") }
-        if controller.setup != .ready {
-            Button("Finish setup…") { show("onboarding") }
-        }
-        Divider()
-        if s.sessions.isEmpty {
-            Text("No active sessions")
-        } else {
-            ForEach(s.sessions) { row in
-                Text("\(row.title)  (\(row.detail))")
-            }
-        }
-        Divider()
-        Text(s.thermal)
-        Text(s.battery)
-        if let left = s.timeRemaining { Text(left) }
-        ForEach(s.warnings, id: \.self) { Text("⚠︎ \($0)") }
-        if let last = s.recentReleases.first, last.date.timeIntervalSinceNow > -24 * 3600 {
-            Text("Last safety release \(last.date.formatted(date: .omitted, time: .shortened)): \(last.reason.shortLabel)")
-        }
-        Divider()
-        Button("Release now") { controller.releaseNow() }
-            .disabled(!s.isActive)
-        if s.isPaused {
-            Button("Resume Hibermate") { controller.resume() }
-        } else {
-            Button("Pause Hibermate for 1 hour") { controller.pauseOneHour() }
-        }
-        Divider()
-        Button("Settings…") { show("settings") }
-            .keyboardShortcut(",")
-        Button("Uninstall Hibermate…") { Uninstaller.confirmAndRun(controller) }
-        Button("Quit Hibermate") { NSApp.terminate(nil) }
-            .keyboardShortcut("q")
-    }
-
-    private func show(_ id: String) {
-        openWindow(id: id)
-        NSApp.activate(ignoringOtherApps: true)
     }
 }
 
