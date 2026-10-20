@@ -25,6 +25,9 @@
     - 2b On AC with `caffeinate -s`: no gap; after grace, deliberately **not** slept, with the log naming `caffeinate: PreventSystemSleep`. PASS (option A, SPEC A.6).
     - 2c On battery with `caffeinate -i`: no gap; slept via the helper after grace despite the idle assertion. PASS (option A).
     - 2d App crash with the lid closed (`CRASH_APP_AFTER=60`): kill -9 at 00:42:48 → the helper restored `SleepDisabled 0` and requested sleep in the same second → macOS slept 00:42:53 (helper pid). PASS (SPEC A.7).
+    - 2e Queued prompts (3 prompts queued in one Claude Code session): the session stayed "holding" continuously (working ↔ background) until all were done, then went idle. PASS at the session level. The Mac-level hold wasn't exercised because the battery was at 19%.
+    - Bonus, battery threshold: at 19% on battery (limit 20%), Hibermate correctly **refused to start** a hold. Found a UX gap: the menu said "No agents working". Fixed: it now says why it isn't keeping the Mac awake (`StartBlocker`).
+    - Note: Hibermate was quit normally (⌘Q) at 01:05 and, with launch at login off, didn't come back. Not a crash.
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 

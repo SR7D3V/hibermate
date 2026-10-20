@@ -458,3 +458,41 @@ struct FailSafeTests {
         #expect(h.engine.handle(.quit, now: h.now, conditions: h.c) == [], "idempotent")
     }
 }
+
+@Suite("Why a hold can't start")
+struct StartBlockerTests {
+    @Test func reportsEachBlocker() {
+        var h = Harness()
+        let limits = h.limits
+        h.c.holdWanted = true
+        #expect(h.engine.startBlocker(h.c, limits: limits) == nil)
+        h.c.power = .battery(percent: 19)
+        #expect(h.engine.startBlocker(h.c, limits: limits) == .batteryLow(percent: 19, threshold: 20))
+        #expect(h.step() == [], "and no hold starts")
+        h.c.power = .ac
+        h.c.thermal = .serious
+        #expect(h.engine.startBlocker(h.c, limits: limits) == .tooHot(.serious))
+        h.c.thermal = .nominal
+        h.c.helperReady = false
+        #expect(h.engine.startBlocker(h.c, limits: limits) == .setupIncomplete)
+        h.c.helperReady = true
+        h.c.power = .unknown
+        #expect(h.engine.startBlocker(h.c, limits: limits) == .powerUnknown)
+    }
+
+    @Test func latchAndPauseAreReported() {
+        var h = Harness()
+        h.startHolding()
+        h.c.thermal = .critical
+        h.step()
+        h.c.thermal = .nominal
+        #expect(h.engine.startBlocker(h.c, limits: h.limits) == .latched(.thermalCritical))
+        var p = Harness()
+        _ = p.engine.handle(.pause(until: p.now + 60), now: p.now, conditions: p.c)
+        #expect(p.engine.startBlocker(p.c, limits: p.limits) == .paused)
+    }
+
+    @Test func explanationsArePlain() {
+        #expect(StartBlocker.batteryLow(percent: 19, threshold: 20).explanation.contains("19%"))
+    }
+}

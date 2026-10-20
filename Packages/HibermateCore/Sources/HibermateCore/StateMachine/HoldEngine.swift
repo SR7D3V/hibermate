@@ -56,6 +56,29 @@ public enum Phase: Equatable, Sendable {
     case grace(until: TimeInterval)
 }
 
+public enum StartBlocker: Equatable, Sendable {
+    case setupIncomplete
+    case latched(ReleaseReason)
+    case paused
+    case releasedByUser
+    case tooHot(ThermalLevel)
+    case batteryLow(percent: Int, threshold: Int)
+    case powerUnknown
+
+    /// Plain words for the menu and window.
+    public var explanation: String {
+        switch self {
+        case .setupIncomplete: "setup isn't finished"
+        case .latched: "it was released for safety; open the lid to re-arm"
+        case .paused: "Hibermate is paused"
+        case .releasedByUser: "you chose Release now; it re-arms when the current work finishes"
+        case .tooHot(let t): "the Mac is \(t.plainDescription.lowercased())"
+        case .batteryLow(let p, let t): "the battery is at \(p)% (limit \(t)%); plug in to continue"
+        case .powerUnknown: "the battery level can't be read"
+        }
+    }
+}
+
 public enum UserCommand: Equatable, Sendable {
     case releaseNow
     case pause(until: TimeInterval)
@@ -156,14 +179,25 @@ public struct HoldEngine: Sendable {
     // MARK: - Rules
 
     private func canStartHold(_ c: Conditions, limits: EffectiveLimits) -> Bool {
-        guard c.holdWanted, !suppressedUntilIdle, c.helperReady, c.appLocationOK,
-              latchedReason == nil, pausedUntil == nil else { return false }
+        c.holdWanted && startBlocker(c, limits: limits) == nil
+    }
+
+    /// Why a hold can't start right now, regardless of whether one is wanted.
+    /// The UI shows this when an agent is working but the Mac isn't being kept
+    /// awake, so "No agents working" is never shown when that isn't true.
+    public func startBlocker(_ c: Conditions, limits: EffectiveLimits) -> StartBlocker? {
+        if !c.appLocationOK { return .setupIncomplete }
+        if !c.helperReady { return .setupIncomplete }
+        if let latched = latchedReason { return .latched(latched) }
+        if pausedUntil != nil { return .paused }
+        if suppressedUntilIdle { return .releasedByUser }
         // Never start (or resume) under serious or critical thermal pressure.
-        guard c.thermal <= .fair else { return false }
+        if c.thermal > .fair { return .tooHot(c.thermal) }
         switch c.power {
-        case .ac: return true
-        case .battery(let percent): return percent > limits.batteryThreshold
-        case .unknown: return false
+        case .ac: return nil
+        case .battery(let percent):
+            return percent > limits.batteryThreshold ? nil : .batteryLow(percent: percent, threshold: limits.batteryThreshold)
+        case .unknown: return .powerUnknown
         }
     }
 

@@ -469,7 +469,12 @@ final class AppController: ObservableObject {
             case .grace(let until):
                 s.icon = .grace; s.headline = "Work finished — sleeping in \(Self.format(max(0, until - now)))"
             case .idle:
-                if engine.latchedReason != nil {
+                if c.holdWanted, let blocker = engine.startBlocker(c, limits: limits) {
+                    // An agent is working but the Mac isn't being kept awake: say why.
+                    s.icon = .warning
+                    s.headline = "Agent working, but not keeping the Mac awake"
+                    s.warnings.append("Not keeping the Mac awake: \(blocker.explanation).")
+                } else if engine.latchedReason != nil {
                     s.icon = .warning; s.headline = "Released for safety"
                 } else if s.isPaused {
                     s.icon = .idle; s.headline = "Paused"
@@ -484,6 +489,8 @@ final class AppController: ObservableObject {
             "Until setup is finished, your Mac sleeps normally."
         case (.ready, .holding): "An AI tool is working. You can close the lid; the display turns off and the work continues."
         case (.ready, .grace): "All work finished. Waiting a little in case more arrives, then normal sleep returns."
+        case (.ready, .idle) where lastConditions.holdWanted && engine.startBlocker(lastConditions, limits: limits) != nil:
+            "If you close the lid, the Mac sleeps normally and the work pauses."
         case (.ready, .idle):
             engine.latchedReason != nil
                 ? "Hibermate released the Mac to protect it. Open the lid to re-arm it."
