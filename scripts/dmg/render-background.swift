@@ -2,19 +2,17 @@
 // Applications, and the first-launch steps for unsigned builds.
 //
 // Usage: swift scripts/dmg/render-background.swift <output-dir>
-// Writes background.png (760x520) and background@2x.png (1520x1040).
-// The window shows about 660x420 of it, but newer Finder versions make the
-// content area a little bigger, so the gradient extends past the design to
-// leave no uncovered edges. The icon positions here must match scripts/build-dmg.sh.
+// Writes background.png (720x520) and background@2x.png (1440x1040).
+// The window is 720 wide; its height varies with the Finder version's toolbar,
+// so the design (about 420 tall) sits at the top and the background runs on
+// below it. The icon positions and window size here must match scripts/build-dmg.sh.
 
 import AppKit
 import Foundation
 
-let width: CGFloat = 760, height: CGFloat = 520
-/// The designed area (top-left aligned with the window); text centers on it.
-let designWidth: CGFloat = 660
-let appIconCenter = CGPoint(x: 165, y: 190)
-let applicationsCenter = CGPoint(x: 495, y: 190)
+let width: CGFloat = 720, height: CGFloat = 520
+let appIconCenter = CGPoint(x: 195, y: 190)
+let applicationsCenter = CGPoint(x: 525, y: 190)
 
 let ink = NSColor(srgbRed: 0.11, green: 0.12, blue: 0.17, alpha: 1)
 let secondaryInk = NSColor(srgbRed: 0.36, green: 0.38, blue: 0.46, alpha: 1)
@@ -50,7 +48,7 @@ func draw(scale: CGFloat) -> Data {
         // Text drawing needs an unflipped context.
         let flipped = NSGraphicsContext(cgContext: cg, flipped: true)
         NSGraphicsContext.current = flipped
-        attributed.draw(with: NSRect(x: (designWidth - maxWidth) / 2, y: y - bounds.height / 2, width: maxWidth, height: bounds.height + 4),
+        attributed.draw(with: NSRect(x: (width - maxWidth) / 2, y: y - bounds.height / 2, width: maxWidth, height: bounds.height + 4),
                         options: [.usesLineFragmentOrigin])
         NSGraphicsContext.restoreGraphicsState()
     }
@@ -75,7 +73,7 @@ func draw(scale: CGFloat) -> Data {
     cg.fillPath()
 
     // First-launch steps.
-    let panel = CGRect(x: 40, y: 292, width: designWidth - 80, height: 104)
+    let panel = CGRect(x: 70, y: 292, width: width - 140, height: 104)
     cg.setFillColor(NSColor.white.withAlphaComponent(0.85).cgColor)
     cg.addPath(CGPath(roundedRect: panel, cornerWidth: 14, cornerHeight: 14, transform: nil))
     cg.fillPath()
