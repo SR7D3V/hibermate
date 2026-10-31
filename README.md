@@ -4,7 +4,7 @@
 
 Hibermate is a free, open-source macOS menu bar app. It keeps your MacBook awake with the lid closed **only while an AI agent or local model is working**: Claude Code, Codex, Gemini CLI, Cursor, Ollama, and more. When the work is done, it lets the Mac sleep. When nothing is working, your Mac behaves exactly as if Hibermate weren't installed.
 
-> **Status: early release (0.1.0).** Tested on real hardware on one MacBook Pro (M3 Pro) with Claude Code and Codex: lid-closed holds on battery and AC, crash and restart recovery, safety limits, install and uninstall. **Not yet tested:** real overheating (thermal releases are covered only by unit tests), an external display with the lid closed, other Mac models (Intel, fanless MacBook Air), and the other AI tools in real use. If anything is uncertain, Hibermate lets the Mac sleep normally. Please [report problems](https://github.com/SR7D3V/hibermate/issues).
+> **Status: early release (0.1.0).** Tested on real hardware on a MacBook Pro (M3 Pro) with Claude Code and Codex: lid-closed holds on battery and AC, crash and restart recovery, safety limits, install and uninstall. Also installed from this release and working on a MacBook Air (M4). **Not yet tested:** real overheating (thermal releases are covered only by unit tests), an external display with the lid closed, Intel Macs, and the other AI tools in real use. If anything is uncertain, Hibermate lets the Mac sleep normally. Please [report problems](https://github.com/SR7D3V/hibermate/issues).
 
 ## Why
 

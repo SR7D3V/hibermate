@@ -43,6 +43,7 @@
     - 4b Fresh install from a quarantined DMG (as if downloaded with Safari): macOS showed "Hibermate Not Opened" (unsigned); Privacy & Security → Open Anyway worked; three-step setup registered and approved the helper and installed the Claude Code hooks (with a backup). PASS. The DMG window layout needs Finder automation permission, which wasn't granted in this session, so the plain layout was used.
     - 4c `sh uninstall.sh` with the app already removed (2026-10-21): the end state was clean. No app, helper, processes, user or root data, or preferences remained; `~/.claude/settings.json` was byte-identical to the original backup; no hooks were left in any tool; SleepDisabled 0. PASS. The script printed a needless "remove hooks manually" warning and a `defaults` error; both fixed.
   - Note: the already-running VS Code Claude Code session picked up the new hooks immediately, without a restart.
+  - **Second Mac (2026-10-31), MacBook Air M4 (2025, Mac16,12/13, fanless), a friend's machine:** downloaded v0.1.0 from GitHub Releases, installed it and it worked (reported by the owner; lid-closed run and macOS version not recorded). First install outside the dev Mac. PASS.
   - Not yet tested: clean user account, AC with an external display, thermal, reboot mid-hold.
 
 Unit tests cover the logic with fakes. This checklist covers what only a real Mac can show. Record the date, macOS version, and Mac model (`sysctl -n hw.model`) for every run.
